@@ -41,10 +41,11 @@
 
     <script>
         // --- CONFIGURATION ---
-        // ⚠️ PASTE YOUR KEYS HERE AGAIN (Same as CMS) ⚠️
+        // ⚠️ PASTE YOUR KEYS HERE (Same as CMS) ⚠️
         const YOUR_SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
         const YOUR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4';
 
+        // FIX: We name this 'sb' instead of 'supabase' to avoid the error
         const sb = supabase.createClient(YOUR_SUPABASE_URL, YOUR_SUPABASE_KEY);
 
         let myCode = localStorage.getItem('pair_code');
@@ -70,12 +71,11 @@
                     .from('devices')
                     .select('*')
                     .eq('code', input)
-                    .single(); // .single() returns error if no row found
+                    .single(); 
                 
                 if (error || !data) {
-                    // Check specifically if it's a permissions issue
                     if(error && error.code === '42501') {
-                        alert("Permission Denied: Did you run the SQL policies in Step 1?");
+                        alert("Permission Denied: Did you run the SQL policies in Supabase?");
                     } else if (!silent) {
                         alert("Invalid Code. Please check CMS.");
                     }
@@ -110,7 +110,7 @@
                 .update({ status: 'online', last_seen: new Date() })
                 .eq('code', myCode);
 
-            // 2. Get Device Info (To find assigned playlist)
+            // 2. Get Device Info
             const { data: device } = await sb
                 .from('devices')
                 .select('playlist_id')
@@ -119,10 +119,9 @@
             
             if (device && device.playlist_id) {
                 // 3. Get Playlist Items
-                // Note: We perform a "Join" manually here for simplicity
                 const { data: playlist } = await sb
                     .from('playlists')
-                    .select('items') // items is an array of media IDs
+                    .select('items') 
                     .eq('id', device.playlist_id)
                     .single();
                 
@@ -139,7 +138,7 @@
                 }
             } else {
                 document.getElementById('status-bar').innerText = "No Playlist Assigned";
-                document.getElementById('stage').innerHTML = ''; // Clear screen
+                document.getElementById('stage').innerHTML = ''; 
             }
         }
 
@@ -160,7 +159,6 @@
                 }
             }
             
-            // Start Loop if not running
             if (!window.loopRunning) {
                 window.loopRunning = true;
                 runLoop(items);
@@ -179,7 +177,6 @@
                 stage.innerHTML = `<img src="${cachedUrl}" class="slide active">`;
                 document.getElementById('status-bar').innerText = `Playing: ${item.name}`;
 
-                // Wait duration then next
                 setTimeout(() => {
                     index = (index + 1) % items.length;
                     nextSlide();
@@ -191,3 +188,4 @@
     </script>
 </body>
 </html>
+
