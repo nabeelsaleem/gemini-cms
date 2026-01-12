@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { margin: 0; background: black; color: white; overflow: hidden; font-family: sans-serif; }
+        .hidden { display: none; }
+        #setup { height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; }
+        input { font-size: 2rem; text-align: center; width: 200px; padding: 10px; margin: 20px 0; text-transform: uppercase; }
+        
+        #player { position: relative; width: 100vw; height: 100vh; }
+        .slide { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1s; }
+        .active { opacity: 1; }
+        
+        #loading { position: fixed; top: 10px; right: 10px; color: yellow; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <div id="setup">
+        <div>
+            <h1>ENTER CODE</h1>
+            <input id="code" maxlength="6">
+            <br>
+            <button onclick="pair()" style="padding:10px 20px; font-size:1.2rem;">CONNECT</button>
+        </div>
+    </div>
+
+    <div id="player" class="hidden">
+        <div id="loading">Using Cached Data</div>
+        <div id="stage"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; 
+        const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let myCode = localStorage.getItem('pair_code');
+        let cache = {}; // SMART CACHE STORAGE
+
+        if (myCode) startPlayer();
+
+        async function pair() {
+            const input = document.getElementById('code').value.toUpperCase();
+            // Check if code exists in DB
+            const { data } = await supabase.from('devices').select('*').eq('code', input).single();
+            
+            if (data) {
+                localStorage.setItem('pair_code', input);
+                myCode = input;
+                startPlayer();
+            } else {
+                alert('Invalid Code');
+            }
+        }
+
+        function startPlayer() {
+            document.getElementById('setup').classList.add('hidden');
+            document.getElementById('player').classList.remove('hidden');
+            
+            // Poll for updates every 30 seconds
+            setInterval(checkUpdates, 30000); 
+            checkUpdates();
+        }
+
+        async function checkUpdates() {
+            // 1. Heartbeat
+            await supabase.from('devices').update({ status: 'online', last_seen: new Date() }).eq('code', myCode);
+
+            // 2. Get Device & Playlist Info
+            const { data: device } = await supabase.from('devices').select('playlist_id').eq('code', myCode).single();
+            
+            if (device && device.playlist_id) {
+                // Fetch Playlist Items
+                const { data: playlist } = await supabase.from('playlists').select('items').eq('id', device.playlist_id).single();
+                
+                // Fetch actual Media details
+                // Note: In real app, you'd join tables. Here we fetch media based on IDs
+                if(playlist && playlist.items) {
+                    const { data: mediaItems } = await supabase.from('media').select('*').in('id', playlist.items);
+                    smartDownload(mediaItems);
+                }
+            }
+        }
+
+        // --- SMART CACHING LOGIC ---
+        async function smartDownload(items) {
+            document.getElementById('loading').innerText = "Downloading new content...";
+            
+            for (let item of items) {
+                // Only download if not in cache
+                if (!cache[item.id]) {
+                    console.log("Downloading", item.name);
+                    try {
+                        const response = await fetch(item.url);
+                        const blob = await response.blob();
+                        // Create a local memory URL (does not use bandwidth anymore)
+                        cache[item.id] = URL.createObjectURL(blob);
+                    } catch (e) {
+                        console.error("Download failed", e);
+                    }
+                }
+            }
+            document.getElementById('loading').innerText = "Playing from Cache";
+            
+            // Start Loop if not running
+            if (!window.loopRunning) runLoop(items);
+        }
+
+        async function runLoop(items) {
+            window.loopRunning = true;
+            let index = 0;
+            const stage = document.getElementById('stage');
+
+            const nextSlide = () => {
+                const item = items[index];
+                const cachedUrl = cache[item.id] || item.url; // Fallback to URL if cache fails
+
+                // Render
+                stage.innerHTML = `<img src="${cachedUrl}" class="slide active">`;
+
+                setTimeout(() => {
+                    index = (index + 1) % items.length;
+                    nextSlide();
+                }, item.duration || 5000);
+            };
+
+            nextSlide();
+        }
+
+    </script>
+</body>
+</html>
