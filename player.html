@@ -6,54 +6,53 @@
     <title>Smart Player</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { margin: 0; background: black; color: white; overflow: hidden; font-family: sans-serif; }
+        body { margin: 0; background: black; color: white; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         .hidden { display: none !important; }
         
         /* Pairing Screen */
-        #setup { height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; background: #111; }
-        input { font-size: 3rem; text-align: center; width: 300px; padding: 15px; margin: 20px 0; text-transform: uppercase; letter-spacing: 10px; background: #222; border: 2px solid #444; color: white; border-radius: 10px; }
-        button { padding: 15px 40px; font-size: 1.5rem; cursor: pointer; background: #2563eb; color: white; border: none; border-radius: 50px; font-weight: bold; }
-        button:hover { background: #1d4ed8; }
+        #setup { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #0f172a; }
+        input { font-size: 3rem; text-align: center; width: 350px; padding: 15px; margin: 30px 0; text-transform: uppercase; letter-spacing: 10px; background: #1e293b; border: 2px solid #334155; color: white; border-radius: 12px; outline: none; transition: 0.3s; }
+        input:focus { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+        button { padding: 15px 50px; font-size: 1.2rem; cursor: pointer; background: #3b82f6; color: white; border: none; border-radius: 50px; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #2563eb; transform: scale(1.05); }
 
         /* Player Screen */
         #player { position: relative; width: 100vw; height: 100vh; }
         .slide { position: absolute; top:0; left:0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 1s; background: black; }
         .active { opacity: 1; }
         
-        #status-bar { position: fixed; bottom: 10px; right: 10px; color: rgba(255,255,255,0.5); font-size: 0.8rem; z-index: 100; }
+        #status-bar { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 20px; color: rgba(255,255,255,0.8); font-size: 0.8rem; z-index: 100; backdrop-filter: blur(4px); }
     </style>
 </head>
 <body>
 
     <div id="setup">
-        <div>
-            <h1 style="color:#888; margin-bottom:0">ENTER PAIRING CODE</h1>
-            <input id="code" maxlength="6" placeholder="------">
-            <br>
-            <button onclick="pair()">CONNECT</button>
-        </div>
+        <h1 style="color:#94a3b8; margin:0; letter-spacing:2px; font-weight:400">ENTER PAIRING CODE</h1>
+        <input id="code" maxlength="6" placeholder="------">
+        <button onclick="pair()">CONNECT DEVICE</button>
     </div>
 
     <div id="player" class="hidden">
         <div id="stage"></div>
-        <div id="status-bar">Waiting for content...</div>
+        <div id="status-bar">Connecting...</div>
     </div>
 
     <script>
         // --- CONFIGURATION ---
-        // ⚠️ PASTE YOUR KEYS HERE (Same as CMS) ⚠️
+        // ⚠️ PASTE YOUR KEYS HERE ⚠️
         const YOUR_SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
-        const YOUR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4'; // PASTE YOUR KEY HERE
+        const YOUR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4'; // <-- PASTE YOUR LONG KEY HERE
 
         const sb = supabase.createClient(YOUR_SUPABASE_URL, YOUR_SUPABASE_KEY);
 
         let myCode = localStorage.getItem('pair_code');
         let cache = {}; 
+        let loopRunning = false;
 
         // Auto-start if paired before
         if (myCode) {
             document.getElementById('code').value = myCode;
-            pair(true); // true = silent mode (no alerts)
+            pair(true); // true = silent mode
         }
 
         async function pair(silent = false) {
@@ -74,10 +73,11 @@
                 
                 if (error || !data) {
                     if(error && error.code === '42501') {
-                        alert("Permission Denied: Did you run the SQL policies in Supabase?");
+                        alert("Permission Denied: Did you run the SQL policies?");
                     } else if (!silent) {
                         alert("Invalid Code. Please check CMS.");
                     }
+                    // Reset if invalid
                     localStorage.removeItem('pair_code');
                     return;
                 }
@@ -88,7 +88,7 @@
                 startPlayer();
 
             } catch (e) {
-                alert("Connection Error: " + e.message);
+                if(!silent) alert("Connection Error: " + e.message);
             }
         }
 
@@ -104,19 +104,27 @@
         async function checkUpdates() {
             document.getElementById('status-bar').innerText = "Checking updates...";
 
-            // 1. Heartbeat (Tell CMS we are online)
-            await sb.from('devices')
-                .update({ status: 'online', last_seen: new Date() })
-                .eq('code', myCode);
-
-            // 2. Get Device Info
-            const { data: device } = await sb
+            // 1. SELF-HEALING: Check if device still exists
+            const { data: device, error } = await sb
                 .from('devices')
                 .select('playlist_id')
                 .eq('code', myCode)
                 .single();
+
+            // If device was deleted in CMS, reset the player
+            if (error || !device) {
+                alert("Device unlinked from CMS. Resetting...");
+                localStorage.removeItem('pair_code');
+                location.reload();
+                return;
+            }
+
+            // 2. Heartbeat (Tell CMS we are online)
+            await sb.from('devices')
+                .update({ status: 'online', last_seen: new Date() })
+                .eq('code', myCode);
             
-            if (device && device.playlist_id) {
+            if (device.playlist_id) {
                 // 3. Get Playlist Items
                 const { data: playlist } = await sb
                     .from('playlists')
@@ -125,35 +133,36 @@
                     .single();
                 
                 if(playlist && playlist.items && playlist.items.length > 0) {
-                    // 4. Extract IDs
                     const mediaIds = playlist.items.map(i => i.id);
                     
-                    // 5. Fetch Media Details
+                    // 4. Fetch Media Files
                     const { data: mediaFiles } = await sb
                         .from('media')
                         .select('*')
                         .in('id', mediaIds);
                     
-                    // 6. Merge Duration
+                    // 5. Merge Data
                     const finalPlaylist = playlist.items.map(pItem => {
                         const fileData = mediaFiles.find(f => f.id === pItem.id);
+                        if (!fileData) return null;
                         return { 
                             ...fileData, 
                             duration: pItem.duration 
                         }; 
-                    }).filter(x => x.url);
+                    }).filter(Boolean); // Remove nulls
 
                     if(finalPlaylist.length > 0) {
                         smartDownload(finalPlaylist);
                     }
                 } else {
                      document.getElementById('status-bar').innerText = "Playlist is empty";
+                     document.getElementById('stage').innerHTML = '';
                 }
             } else {
                 document.getElementById('status-bar').innerText = "No Playlist Assigned";
                 document.getElementById('stage').innerHTML = ''; 
             }
-        } // <--- THIS WAS MISSING
+        }
 
         // --- CACHING & PLAYBACK ---
         async function smartDownload(items) {
@@ -186,11 +195,11 @@
                 const itemData = items[index];
                 const cachedUrl = cache[itemData.id] || itemData.url; 
 
-                // Display
+                // ⚠️ IMPORTANT: These are Backticks (`), not quotes (')
                 stage.innerHTML = `<img src="${cachedUrl}" class="slide active">`;
+                
                 document.getElementById('status-bar').innerText = `Playing: ${itemData.name}`;
 
-                // Duration
                 const duration = (itemData.duration || 10) * 1000;
 
                 setTimeout(() => {
@@ -200,7 +209,7 @@
             };
 
             nextSlide();
-        } // <--- THIS WAS MISSING
+        }
     </script>
 </body>
 </html>
