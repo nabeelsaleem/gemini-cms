@@ -95,156 +95,192 @@
 
     <script>
         // --- SETUP ---
-        const SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4';
-        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+       // --- SETUP ---
+// REPLACE THESE WITH YOUR ACTUAL KEYS FROM SUPABASE SETTINGS -> API
+const YOUR_SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
+const YOUR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4';
 
-        let currentUser = null;
-        let isSignUp = false;
+// We use a unique name 'sb' to avoid the "already declared" error
+const sb = supabase.createClient(YOUR_SUPABASE_URL, YOUR_SUPABASE_KEY);
 
-        // --- AUTHENTICATION ---
-        
-        // 1. Google Login (Now works on GitHub Pages!)
-        async function loginGoogle() {
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    // This ensures users come back to THIS page after Google
-                    redirectTo: window.location.href 
-                }
-            });
-            if (error) alert(error.message);
-        }
+let currentUser = null;
+let isSignUp = false;
 
-        // 2. Email Login/Signup
-        async function handleEmailAuth() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            if(!email || !password) return alert("Please fill all fields");
+// --- AUTHENTICATION ---
 
-            let result;
-            if(isSignUp) {
-                result = await supabase.auth.signUp({ email, password });
-                if(!result.error && !result.data.session) alert("Check email for confirmation link!");
-            } else {
-                result = await supabase.auth.signInWithPassword({ email, password });
-            }
-
-            if(result.error) {
-                document.getElementById('error-msg').innerText = result.error.message;
-                document.getElementById('error-msg').style.display = 'block';
-            }
-        }
-
-        // 3. Toggle Mode
-        function toggleAuth() {
-            isSignUp = !isSignUp;
-            document.getElementById('auth-action-btn').innerText = isSignUp ? 'Create Account' : 'Login';
-            document.getElementById('auth-toggle').innerHTML = isSignUp 
-                ? 'Already have an account? <span style="color:var(--primary)">Login</span>' 
-                : 'Don\'t have an account? <span style="color:var(--primary)">Sign up</span>';
-        }
-
-        // 4. Session Listener (Handles redirects from Google)
-        supabase.auth.onAuthStateChange((event, session) => {
-            if (session) {
-                currentUser = session.user;
-                initDashboard();
+// 1. Google Login
+async function loginGoogle() {
+    try {
+        const { data, error } = await sb.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.href 
             }
         });
+        if (error) throw error;
+    } catch (err) {
+        alert("Google Login Error: " + err.message);
+    }
+}
 
-        async function logout() {
-            await supabase.auth.signOut();
-            location.reload();
+// 2. Email Login/Signup
+async function handleEmailAuth() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    if(!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+    }
+
+    try {
+        let result;
+        if(isSignUp) {
+            result = await sb.auth.signUp({ email, password });
+            if(!result.error && !result.data.session) {
+                alert("Success! Please check your email inbox for a confirmation link.");
+            }
+        } else {
+            result = await sb.auth.signInWithPassword({ email, password });
         }
 
-        // --- DASHBOARD LOGIC ---
-        function initDashboard() {
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('dashboard').classList.remove('hidden');
-            loadMedia();
-            loadDevices();
-            checkPlan();
-        }
+        if(result.error) throw result.error;
+    } catch (err) {
+        alert("Authentication Error: " + err.message);
+    }
+}
 
-        async function checkPlan() {
-            const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-            const { count } = await supabase.from('devices').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
-            
-            const limit = profile ? profile.screen_limit : 3;
-            document.getElementById('plan-badge').innerText = `${count} / ${limit} SCREENS`;
-            window.userLimit = limit;
-            window.userCount = count;
-        }
+// 3. Toggle Mode
+function toggleAuth() {
+    isSignUp = !isSignUp;
+    document.getElementById('auth-action-btn').innerText = isSignUp ? 'Create Account' : 'Login';
+    document.getElementById('auth-toggle').innerHTML = isSignUp 
+        ? 'Already have an account? <span style="color:#2563eb">Login</span>' 
+        : 'Don\'t have an account? <span style="color:#2563eb">Sign up</span>';
+}
 
-        async function loadMedia() {
-            const { data } = await supabase.from('media').select('*');
-            document.getElementById('media-list').innerHTML = data.map(m => `
-                <div class="card">
-                    <img src="${m.url}" class="media-preview">
-                    <div style="font-weight:500">${m.name}</div>
-                </div>
-            `).join('');
-        }
+// 4. Session Listener (This runs automatically when you log in)
+sb.auth.onAuthStateChange((event, session) => {
+    if (session) {
+        console.log("Session detected:", session.user.email);
+        currentUser = session.user;
+        initDashboard();
+    }
+});
 
-        async function uploadMedia() {
-            const file = document.getElementById('file-upload').files[0];
-            if (!file) return;
-            
-            const fileName = `${Date.now()}-${file.name.replace(/\s/g, '')}`;
-            // Upload to Bucket
-            const { error: uploadError } = await supabase.storage.from('media').upload(fileName, file);
-            if(uploadError) return alert(uploadError.message);
+async function logout() {
+    await sb.auth.signOut();
+    location.reload();
+}
 
-            // Get URL
-            const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(fileName);
+// --- DASHBOARD LOGIC ---
+function initDashboard() {
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    loadMedia();
+    loadDevices();
+    checkPlan();
+}
 
-            // Save to DB
-            await supabase.from('media').insert({
-                user_id: currentUser.id,
-                name: file.name,
-                type: 'image',
-                url: publicUrl
-            });
-            loadMedia();
-        }
+async function checkPlan() {
+    try {
+        const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+        const { count } = await sb.from('devices').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
+        
+        const limit = profile ? profile.screen_limit : 3;
+        document.getElementById('plan-badge').innerText = `${count} / ${limit} SCREENS`;
+        window.userLimit = limit;
+        window.userCount = count;
+    } catch (e) {
+        console.log("Plan check failed, user might be new.");
+    }
+}
 
-        function showTab(tab) {
-            document.getElementById('tab-media').classList.add('hidden');
-            document.getElementById('tab-devices').classList.add('hidden');
-            document.getElementById(`tab-${tab}`).classList.remove('hidden');
-            
-            document.querySelectorAll('.btn-nav').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-        }
+async function loadMedia() {
+    const { data, error } = await sb.from('media').select('*');
+    if (error) {
+        console.error("Error loading media:", error.message);
+        return;
+    }
+    document.getElementById('media-list').innerHTML = data.map(m => `
+        <div class="card">
+            <img src="${m.url}" class="media-preview">
+            <div style="font-weight:500">${m.name}</div>
+        </div>
+    `).join('');
+}
 
-        async function addDevice() {
-            if(window.userCount >= window.userLimit) return alert("Upgrade to add more screens!");
-            
-            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-            await supabase.from('devices').insert({
-                user_id: currentUser.id,
-                code: code,
-                name: 'New Screen',
-                status: 'offline'
-            });
-            loadDevices();
-            checkPlan();
-            alert(`New Screen Code: ${code}`);
-        }
+async function uploadMedia() {
+    const file = document.getElementById('file-upload').files[0];
+    if (!file) return;
+    
+    const fileName = `${Date.now()}-${file.name.replace(/\s/g, '')}`;
+    
+    const { error: uploadError } = await sb.storage.from('media').upload(fileName, file);
+    if(uploadError) {
+        alert("Upload Error: " + uploadError.message);
+        return;
+    }
 
-        async function loadDevices() {
-            const { data } = await supabase.from('devices').select('*');
-            document.getElementById('device-list').innerHTML = data.map(d => `
-                <div class="card">
-                    <h3>${d.name}</h3>
-                    <div style="font-size:1.5rem; letter-spacing:2px; margin:10px 0; font-weight:bold">${d.code}</div>
-                    <div class="badge" style="background:${d.status==='online'?'#dcfce7':'#fee2e2'}; color:${d.status==='online'?'#166534':'#991b1b'}">
-                        ${d.status.toUpperCase()}
-                    </div>
-                </div>
-            `).join('');
-        }
+    const { data: { publicUrl } } = sb.storage.from('media').getPublicUrl(fileName);
+
+    const { error: dbError } = await sb.from('media').insert({
+        user_id: currentUser.id,
+        name: file.name,
+        type: 'image',
+        url: publicUrl
+    });
+    
+    if (dbError) alert("Database Error: " + dbError.message);
+    loadMedia();
+}
+
+function showTab(tab) {
+    document.getElementById('tab-media').classList.add('hidden');
+    document.getElementById('tab-devices').classList.add('hidden');
+    document.getElementById(`tab-${tab}`).classList.remove('hidden');
+    
+    document.querySelectorAll('.btn-nav').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+}
+
+async function addDevice() {
+    if(window.userCount >= window.userLimit) {
+        alert("Limit reached! Please upgrade to add more screens.");
+        return;
+    }
+    
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const { error } = await sb.from('devices').insert({
+        user_id: currentUser.id,
+        code: code,
+        name: 'New Screen',
+        status: 'offline'
+    });
+    
+    if (error) {
+        alert("Error adding device: " + error.message);
+    } else {
+        loadDevices();
+        checkPlan();
+        alert(`New Screen Generated! Code: ${code}`);
+    }
+}
+
+async function loadDevices() {
+    const { data, error } = await sb.from('devices').select('*');
+    if (error) return;
+    
+    document.getElementById('device-list').innerHTML = data.map(d => `
+        <div class="card">
+            <h3>${d.name}</h3>
+            <div style="font-size:1.5rem; letter-spacing:2px; margin:10px 0; font-weight:bold">${d.code}</div>
+            <div class="badge" style="background:${d.status==='online'?'#dcfce7':'#fee2e2'}; color:${d.status==='online'?'#166534':'#991b1b'}">
+                ${d.status.toUpperCase()}
+            </div>
+        </div>
+    `).join('');
+}
     </script>
 </body>
 </html>
