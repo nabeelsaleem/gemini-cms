@@ -118,21 +118,35 @@
                 .single();
             
             if (device && device.playlist_id) {
-                // 3. Get Playlist Items
+                // 1. Fetch the playlist JSON structure
                 const { data: playlist } = await sb
                     .from('playlists')
-                    .select('items') 
+                    .select('items')
                     .eq('id', device.playlist_id)
                     .single();
                 
                 if(playlist && playlist.items && playlist.items.length > 0) {
-                    // 4. Fetch Media Details
-                    const { data: mediaItems } = await sb
+                    // 2. Extract the IDs from your new JSON format
+                    const mediaIds = playlist.items.map(i => i.id);
+                    
+                    // 3. Fetch actual file URLs from the media table
+                    const { data: mediaFiles } = await sb
                         .from('media')
                         .select('*')
-                        .in('id', playlist.items);
+                        .in('id', mediaIds);
                     
-                    if(mediaItems) smartDownload(mediaItems);
+                    // 4. SMART MERGE: Combine URLs with their specific durations
+                    const finalPlaylist = playlist.items.map(pItem => {
+                        const fileData = mediaFiles.find(f => f.id === pItem.id);
+                        return { 
+                            ...fileData, 
+                            duration: pItem.duration // This uses the duration you set in the builder
+                        }; 
+                    }).filter(x => x.url); // Remove items if the file was deleted
+
+                    if(finalPlaylist.length > 0) {
+                        smartDownload(finalPlaylist);
+                    }
                 } else {
                      document.getElementById('status-bar').innerText = "Playlist is empty";
                 }
@@ -140,7 +154,6 @@
                 document.getElementById('status-bar').innerText = "No Playlist Assigned";
                 document.getElementById('stage').innerHTML = ''; 
             }
-        }
 
         // --- CACHING & PLAYBACK ---
         async function smartDownload(items) {
@@ -170,17 +183,31 @@
             const stage = document.getElementById('stage');
 
             const nextSlide = () => {
-                const item = items[index];
-                const cachedUrl = cache[item.id] || item.url; 
+                const itemData = items[index]; // This is from the database
+                
+                // New Logic: The 'items' array from DB contains {id: 123, duration: 10}
+                // But we also fetched the media details (url, name) in the checkUpdates function.
+                // We need to merge them.
+                
+                // In checkUpdates(), we fetched 'mediaItems'. We need to pass that here properly.
+                // (See fix below)
+                
+                // Simplified fix for this specific no-code context:
+                // We assume 'items' passed to runLoop are the FULL media objects with a 'duration' property attached.
+                
+                const cachedUrl = cache[itemData.id] || itemData.url; 
 
-                // Display Image
+                // Display
                 stage.innerHTML = `<img src="${cachedUrl}" class="slide active">`;
-                document.getElementById('status-bar').innerText = `Playing: ${item.name}`;
+                document.getElementById('status-bar').innerText = `Playing: ${itemData.name}`;
+
+                // Use the duration specific to this slide, or default to 10s
+                const duration = (itemData.duration || 10) * 1000;
 
                 setTimeout(() => {
                     index = (index + 1) % items.length;
                     nextSlide();
-                }, item.duration || 5000);
+                }, duration);
             };
 
             nextSlide();
@@ -188,4 +215,5 @@
     </script>
 </body>
 </html>
+
 
