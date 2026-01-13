@@ -3,213 +3,1503 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Player</title>
+    <title>SimpliSign Player</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { margin: 0; background: black; color: white; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        .hidden { display: none !important; }
+        :root {
+            --primary: #2563eb;
+            --sidebar: #0f172a;
+            --bg: #f3f4f6;
+            --dark: #1e293b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --gray: #64748b;
+            --light: #f8fafc;
+            --border-radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
         
-        /* Pairing Screen */
-        #setup { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #0f172a; }
-        input { font-size: 3rem; text-align: center; width: 350px; padding: 15px; margin: 30px 0; text-transform: uppercase; letter-spacing: 10px; background: #1e293b; border: 2px solid #334155; color: white; border-radius: 12px; outline: none; transition: 0.3s; }
-        input:focus { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-        button { padding: 15px 50px; font-size: 1.2rem; cursor: pointer; background: #3b82f6; color: white; border: none; border-radius: 50px; font-weight: bold; transition: 0.2s; }
-        button:hover { background: #2563eb; transform: scale(1.05); }
-
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            background: var(--dark);
+            color: white;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Setup/Pairing Screen */
+        #setup-screen {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--sidebar), #1e293b);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #setup-screen::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.1) 0%, rgba(15, 23, 42, 0) 70%);
+            transform: rotate(30deg);
+            z-index: 0;
+        }
+        
+        .setup-container {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            width: 100%;
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .app-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #94a3b8, white);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            color: #94a3b8;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .pairing-container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .pairing-option {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            text-align: left;
+        }
+        
+        .pairing-option:hover {
+            background: rgba(37, 99, 235, 0.15);
+            transform: translateY(-2px);
+            border-color: var(--primary);
+        }
+        
+        .pairing-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            background: rgba(37, 99, 235, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+        
+        .pairing-content h2 {
+            font-size: 1.4rem;
+            margin-bottom: 8px;
+            color: white;
+        }
+        
+        .pairing-content p {
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+        
+        /* Manual Pairing Screen */
+        #manual-pairing {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--sidebar), #1e293b);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .pairing-box {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: var(--shadow-lg);
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .pairing-header {
+            margin-bottom: 30px;
+        }
+        
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            z-index: 10;
+        }
+        
+        .back-button:hover {
+            background: var(--primary);
+            transform: rotate(90deg);
+        }
+        
+        .code-input {
+            font-size: 2.5rem;
+            text-align: center;
+            width: 100%;
+            padding: 20px;
+            margin: 25px 0;
+            background: rgba(15, 23, 42, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 16px;
+            outline: none;
+            letter-spacing: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: var(--transition);
+        }
+        
+        .code-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+        }
+        
+        .code-input::placeholder {
+            color: #475569;
+            letter-spacing: 4px;
+        }
+        
+        .pairing-instructions {
+            color: #94a3b8;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            padding: 14px 30px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-outline:hover {
+            background: rgba(37, 99, 235, 0.1);
+        }
+        
+        /* QR Pairing Screen */
+        #qr-pairing {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--sidebar), #1e293b);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .qr-container {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: var(--shadow-lg);
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+        
+        .qr-code-container {
+            width: 240px;
+            height: 240px;
+            margin: 0 auto 25px;
+            background: white;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .qr-code-placeholder {
+            font-size: 8rem;
+            color: var(--gray);
+        }
+        
+        .qr-instructions {
+            color: #94a3b8;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .qr-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+            position: relative;
+        }
+        
+        .qr-steps::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1;
+        }
+        
+        .step {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            position: relative;
+        }
+        
+        .step.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .step-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .step-text {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        
         /* Player Screen */
-        #player { position: relative; width: 100vw; height: 100vh; }
-        .slide { position: absolute; top:0; left:0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 1s; background: black; }
-        .active { opacity: 1; }
+        #player-screen {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: black;
+        }
         
-        #status-bar { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 20px; color: rgba(255,255,255,0.8); font-size: 0.8rem; z-index: 100; backdrop-filter: blur(4px); }
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            background: black;
+        }
+        
+        .slide.active {
+            opacity: 1;
+        }
+        
+        .slide img,
+        .slide video {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
+        }
+        
+        /* Status Bar */
+        #status-bar {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+            padding: 10px 20px;
+            border-radius: 50px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: var(--transition);
+        }
+        
+        #status-bar:hover {
+            background: rgba(30, 41, 59, 0.9);
+            transform: translateX(-5px);
+        }
+        
+        .status-icon {
+            font-size: 1.2rem;
+        }
+        
+        .status-online {
+            color: var(--success);
+        }
+        
+        .status-offline {
+            color: var(--danger);
+        }
+        
+        .status-updating {
+            color: var(--warning);
+        }
+        
+        /* Error Screen */
+        #error-screen {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--sidebar), #1e293b);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .error-container {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            box-shadow: var(--shadow-lg);
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            color: var(--danger);
+            margin-bottom: 20px;
+        }
+        
+        .error-title {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: white;
+        }
+        
+        .error-message {
+            color: #f87171;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .error-details {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            text-align: left;
+            margin-bottom: 30px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #f87171;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        
+        /* Update Screen */
+        #update-screen {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--sidebar), #1e293b);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .update-container {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+            box-shadow: var(--shadow-lg);
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .update-icon {
+            font-size: 4rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        .update-title {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: white;
+        }
+        
+        .update-message {
+            color: #94a3b8;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        /* Loading Spinner */
+        .loading {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(37, 99, 235, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .setup-container,
+            .pairing-box,
+            .qr-container,
+            .error-container,
+            .update-container {
+                padding: 30px 25px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .pairing-container {
+                gap: 20px;
+            }
+            
+            .pairing-option {
+                padding: 20px;
+            }
+            
+            .code-input {
+                font-size: 2rem;
+                padding: 15px;
+            }
+            
+            .qr-code-container {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .step {
+                width: 70px;
+                height: 70px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .setup-container,
+            .pairing-box,
+            .qr-container,
+            .error-container,
+            .update-container {
+                padding: 25px 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .subtitle,
+            .pairing-instructions,
+            .qr-instructions,
+            .error-message,
+            .update-message {
+                font-size: 1rem;
+            }
+            
+            .code-input {
+                font-size: 1.8rem;
+                padding: 12px;
+            }
+            
+            .btn {
+                padding: 12px 25px;
+                font-size: 1rem;
+            }
+            
+            .qr-steps {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+            
+            .qr-steps::before {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
-
-    <div id="setup">
-        <h1 style="color:#94a3b8; margin:0; letter-spacing:2px; font-weight:400">ENTER PAIRING CODE</h1>
-        <input id="code" maxlength="6" placeholder="------">
-        <button onclick="pair()">CONNECT DEVICE</button>
+    <!-- Setup/Pairing Screen -->
+    <div id="setup-screen">
+        <div class="back-button" onclick="location.reload()">
+            <i class="fas fa-arrow-left"></i>
+        </div>
+        
+        <div class="setup-container">
+            <div class="app-icon">
+                <i class="fas fa-tv"></i>
+            </div>
+            <h1>SimpliSign Player</h1>
+            <p class="subtitle">Transform any display into a professional digital signage screen</p>
+            
+            <div class="pairing-container">
+                <div class="pairing-option" onclick="showManualPairing()">
+                    <div class="pairing-icon">
+                        <i class="fas fa-keyboard"></i>
+                    </div>
+                    <div class="pairing-content">
+                        <h2>Manual Pairing</h2>
+                        <p>Enter a 6-digit code from your CMS dashboard</p>
+                    </div>
+                </div>
+                
+                <div class="pairing-option" onclick="showQRPairing()">
+                    <div class="pairing-icon">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <div class="pairing-content">
+                        <h2>QR Code Pairing</h2>
+                        <p>Scan a QR code from your CMS dashboard</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <div id="player" class="hidden">
-        <div id="stage"></div>
-        <div id="status-bar">Connecting...</div>
+    
+    <!-- Manual Pairing Screen -->
+    <div id="manual-pairing" class="hidden">
+        <div class="back-button" onclick="showSetupScreen()">
+            <i class="fas fa-arrow-left"></i>
+        </div>
+        
+        <div class="pairing-box">
+            <div class="pairing-header">
+                <h1>Manual Pairing</h1>
+                <p class="subtitle">Enter the 6-digit code from your CMS dashboard</p>
+            </div>
+            
+            <p class="pairing-instructions">
+                In your CMS dashboard, go to the "Screens" section and click "Add New Screen" or "Pair via QR" to get your pairing code.
+            </p>
+            
+            <input type="text" id="pairing-code" class="code-input" placeholder="ABC123" maxlength="6" oninput="formatCodeInput(this)">
+            
+            <button class="btn" onclick="pairWithCode()">
+                <span class="pair-btn-text">Pair Screen</span>
+                <span class="loading hidden"></span>
+            </button>
+            
+            <p class="mt-4">
+                <button class="btn btn-outline" onclick="showQRPairing()">
+                    <i class="fas fa-qrcode"></i> Or pair with QR code
+                </button>
+            </p>
+        </div>
+    </div>
+    
+    <!-- QR Pairing Screen -->
+    <div id="qr-pairing" class="hidden">
+        <div class="back-button" onclick="showSetupScreen()">
+            <i class="fas fa-arrow-left"></i>
+        </div>
+        
+        <div class="qr-container">
+            <h1>QR Code Pairing</h1>
+            <p class="subtitle">Scan this QR code with your CMS dashboard</p>
+            
+            <div class="qr-code-container">
+                <div id="qr-code-placeholder" class="qr-code-placeholder">
+                    <i class="fas fa-qrcode"></i>
+                </div>
+                <div id="qr-code-container"></div>
+            </div>
+            
+            <p class="qr-instructions">
+                1. Open your CMS dashboard<br>
+                2. Navigate to "Screens" section<br>
+                3. Click "Pair via QR"<br>
+                4. Scan this QR code with your device camera
+            </p>
+            
+            <div class="qr-steps">
+                <div class="step active">
+                    <div class="step-number">1</div>
+                    <div class="step-text">Scan QR</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-text">Confirm</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-text">Complete</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Player Screen -->
+    <div id="player-screen" class="hidden">
+        <div id="content-stage"></div>
+        <div id="status-bar">
+            <i class="fas fa-wifi status-icon status-online" id="connection-status"></i>
+            <span id="status-text">Connected</span>
+        </div>
+    </div>
+    
+    <!-- Error Screen -->
+    <div id="error-screen" class="hidden">
+        <div class="error-container">
+            <div class="error-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2 class="error-title" id="error-title">Connection Error</h2>
+            <p class="error-message" id="error-message">Unable to connect to the server. Please check your internet connection.</p>
+            <div class="error-details hidden" id="error-details"></div>
+            
+            <div class="d-flex gap-3">
+                <button class="btn btn-outline" onclick="retryConnection()">
+                    <i class="fas fa-redo"></i> Retry
+                </button>
+                <button class="btn" onclick="showSetupScreen()">
+                    <i class="fas fa-arrow-left"></i> Back to Setup
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Update Screen -->
+    <div id="update-screen" class="hidden">
+        <div class="update-container">
+            <div class="update-icon">
+                <i class="fas fa-sync-alt"></i>
+            </div>
+            <h2 class="update-title">Updating Content</h2>
+            <p class="update-message">Downloading and preparing your content. This may take a moment...</p>
+            
+            <div class="progress-container">
+                <div class="progress-bar" id="update-progress"></div>
+            </div>
+            
+            <p id="update-details">Checking for updates...</p>
+        </div>
     </div>
 
     <script>
         // --- CONFIGURATION ---
-        // ⚠️ PASTE YOUR KEYS HERE ⚠️
-        const YOUR_SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
-        const YOUR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4'; // <-- PASTE YOUR LONG KEY HERE
-
+        const YOUR_SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co';
+        const YOUR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4';
         const sb = supabase.createClient(YOUR_SUPABASE_URL, YOUR_SUPABASE_KEY);
-
-        let myCode = localStorage.getItem('pair_code');
-        let cache = {}; 
-        let loopRunning = false;
-
-        // Auto-start if paired before
-        if (myCode) {
-            document.getElementById('code').value = myCode;
-            pair(true); // true = silent mode
-        }
-
-        async function pair(silent = false) {
-            const input = document.getElementById('code').value.toUpperCase();
+        
+        // State
+        let pairingCode = null;
+        let deviceId = null;
+        let currentPlaylist = null;
+        let mediaCache = {};
+        let isPlaying = false;
+        let currentSlideIndex = 0;
+        let contentInterval = null;
+        let lastActivity = Date.now();
+        let heartbeatInterval = null;
+        let updateTimeout = null;
+        let screenOrientation = 'landscape';
+        
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if device is already paired
+            const savedCode = localStorage.getItem('simplisign_pair_code');
+            const savedDeviceId = localStorage.getItem('simplisign_device_id');
             
-            if(!input) {
-                if(!silent) alert("Please enter a code");
+            if (savedCode && savedDeviceId) {
+                pairingCode = savedCode;
+                deviceId = savedDeviceId;
+                startPlayer();
+            } else {
+                showSetupScreen();
+            }
+            
+            // Add event listeners for activity detection
+            document.addEventListener('mousemove', resetActivityTimer);
+            document.addEventListener('keypress', resetActivityTimer);
+            document.addEventListener('touchstart', resetActivityTimer);
+        });
+        
+        // --- UI Navigation Functions ---
+        function showSetupScreen() {
+            document.getElementById('setup-screen').classList.remove('hidden');
+            document.getElementById('manual-pairing').classList.add('hidden');
+            document.getElementById('qr-pairing').classList.add('hidden');
+            document.getElementById('player-screen').classList.add('hidden');
+            document.getElementById('error-screen').classList.add('hidden');
+            document.getElementById('update-screen').classList.add('hidden');
+        }
+        
+        function showManualPairing() {
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('manual-pairing').classList.remove('hidden');
+            document.getElementById('qr-pairing').classList.add('hidden');
+        }
+        
+        function showQRPairing() {
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('manual-pairing').classList.add('hidden');
+            document.getElementById('qr-pairing').classList.remove('hidden');
+            
+            // Generate QR code for pairing
+            generateQRCode();
+        }
+        
+        function showPlayerScreen() {
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('manual-pairing').classList.add('hidden');
+            document.getElementById('qr-pairing').classList.add('hidden');
+            document.getElementById('error-screen').classList.add('hidden');
+            document.getElementById('update-screen').classList.add('hidden');
+            document.getElementById('player-screen').classList.remove('hidden');
+        }
+        
+        function showErrorScreen(title, message, details = null) {
+            document.getElementById('error-title').textContent = title;
+            document.getElementById('error-message').textContent = message;
+            
+            const detailsElement = document.getElementById('error-details');
+            if (details) {
+                detailsElement.textContent = details;
+                detailsElement.classList.remove('hidden');
+            } else {
+                detailsElement.classList.add('hidden');
+            }
+            
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('manual-pairing').classList.add('hidden');
+            document.getElementById('qr-pairing').classList.add('hidden');
+            document.getElementById('player-screen').classList.add('hidden');
+            document.getElementById('update-screen').classList.add('hidden');
+            document.getElementById('error-screen').classList.remove('hidden');
+        }
+        
+        function showUpdateScreen(message = 'Checking for updates...') {
+            document.getElementById('update-details').textContent = message;
+            document.getElementById('update-progress').style.width = '0%';
+            
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('manual-pairing').classList.add('hidden');
+            document.getElementById('qr-pairing').classList.add('hidden');
+            document.getElementById('player-screen').classList.add('hidden');
+            document.getElementById('error-screen').classList.add('hidden');
+            document.getElementById('update-screen').classList.remove('hidden');
+        }
+        
+        // --- Pairing Functions ---
+        function formatCodeInput(input) {
+            // Format the input to be uppercase and only alphanumeric
+            input.value = input.value.replace(/[^a-z0-9]/gi, '').toUpperCase();
+        }
+        
+        async function pairWithCode() {
+            const codeInput = document.getElementById('pairing-code');
+            const code = codeInput.value.trim().toUpperCase();
+            
+            if (code.length !== 6) {
+                showErrorScreen('Invalid Code', 'Please enter a valid 6-digit pairing code.');
                 return;
             }
-
+            
+            // Show loading state
+            const btnText = document.querySelector('.pair-btn-text');
+            const loadingSpinner = document.querySelector('.loading');
+            btnText.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            codeInput.disabled = true;
+            
             try {
-                // 1. Check if code exists in DB
+                // Check if code exists in the database
                 const { data, error } = await sb
                     .from('devices')
-                    .select('*')
-                    .eq('code', input)
-                    .single(); 
+                    .select('id, name, orientation, brightness')
+                    .eq('code', code)
+                    .single();
                 
                 if (error || !data) {
-                    if(error && error.code === '42501') {
-                        alert("Permission Denied: Did you run the SQL policies?");
-                    } else if (!silent) {
-                        alert("Invalid Code. Please check CMS.");
-                    }
-                    // Reset if invalid
-                    localStorage.removeItem('pair_code');
+                    throw new Error('Invalid pairing code. Please check and try again.');
+                }
+                
+                // Save pairing information
+                pairingCode = code;
+                deviceId = data.id;
+                screenOrientation = data.orientation || 'landscape';
+                
+                localStorage.setItem('simplisign_pair_code', code);
+                localStorage.setItem('simplisign_device_id', data.id);
+                
+                // Update device status to "online"
+                await updateDeviceStatus('online');
+                
+                // Start the player
+                startPlayer();
+                
+            } catch (error) {
+                console.error('Pairing error:', error);
+                showErrorScreen('Pairing Failed', error.message || 'Failed to pair with the server. Please try again.');
+            } finally {
+                // Hide loading state
+                btnText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                codeInput.disabled = false;
+            }
+        }
+        
+        function generateQRCode() {
+            // Generate a unique session ID for QR pairing
+            const sessionId = 'qr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('simplisign_qr_session', sessionId);
+            
+            // Create QR code data
+            const qrData = {
+                type: 'simplisign_pairing',
+                session: sessionId,
+                timestamp: Date.now()
+            };
+            
+            // Generate QR code
+            const qrCodeElement = document.getElementById('qr-code-container');
+            qrCodeElement.innerHTML = ''; // Clear previous QR code
+            
+            try {
+                const qr = qrcode(0, 'M');
+                qr.addData(JSON.stringify(qrData));
+                qr.make();
+                
+                qrCodeElement.innerHTML = qr.createImgTag(5, 10);
+                document.getElementById('qr-code-placeholder').classList.add('hidden');
+            } catch (error) {
+                console.error('QR code generation error:', error);
+                document.getElementById('qr-code-placeholder').innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+            }
+            
+            // Listen for pairing confirmation via Supabase realtime
+            listenForQRPairing(sessionId);
+        }
+        
+        function listenForQRPairing(sessionId) {
+            // In a real app, this would subscribe to a Supabase realtime channel
+            // For this demo, we'll simulate the pairing process
+            console.log('Listening for QR pairing with session:', sessionId);
+            
+            // Simulate successful pairing after 5 seconds for demo purposes
+            setTimeout(() => {
+                // This would normally come from the server after CMS confirms pairing
+                const mockDeviceData = {
+                    id: 'mock-device-id-' + Date.now(),
+                    code: 'MOCKQR',
+                    name: 'QR Paired Screen',
+                    orientation: 'landscape'
+                };
+                
+                pairingCode = mockDeviceData.code;
+                deviceId = mockDeviceData.id;
+                screenOrientation = mockDeviceData.orientation;
+                
+                localStorage.setItem('simplisign_pair_code', mockDeviceData.code);
+                localStorage.setItem('simplisign_device_id', mockDeviceData.id);
+                
+                startPlayer();
+            }, 5000);
+        }
+        
+        // --- Player Functions ---
+        function startPlayer() {
+            showPlayerScreen();
+            setupScreenOrientation();
+            startHeartbeat();
+            checkForUpdates();
+            
+            // Set up interval to check for updates every 5 minutes
+            setInterval(checkForUpdates, 5 * 60 * 1000);
+        }
+        
+        function setupScreenOrientation() {
+            // Apply screen orientation settings
+            if (screenOrientation === 'portrait') {
+                document.body.style.width = '100vh';
+                document.body.style.height = '100vw';
+                document.body.style.transform = 'rotate(90deg)';
+                document.body.style.transformOrigin = 'top left';
+            } else {
+                document.body.style.transform = 'none';
+                document.body.style.width = '100vw';
+                document.body.style.height = '100vh';
+            }
+        }
+        
+        async function checkForUpdates() {
+            if (!deviceId) return;
+            
+            try {
+                // Show update screen
+                showUpdateScreen('Checking for content updates...');
+                
+                // Get device information to check assigned playlist
+                const { data: device, error: deviceError } = await sb
+                    .from('devices')
+                    .select('playlist_id, brightness, orientation, name')
+                    .eq('id', deviceId)
+                    .single();
+                
+                if (deviceError || !device) {
+                    throw new Error('Device not found. You may need to re-pair.');
+                }
+                
+                // Update screen orientation if changed
+                if (device.orientation && device.orientation !== screenOrientation) {
+                    screenOrientation = device.orientation;
+                    setupScreenOrientation();
+                }
+                
+                // Check if there's a playlist assigned
+                if (!device.playlist_id) {
+                    document.getElementById('content-stage').innerHTML = `
+                        <div class="slide active" style="display:flex;align-items:center;justify-content:center;text-align:center;padding:20px">
+                            <div>
+                                <i class="fas fa-list text-6xl mb-4 text-gray-500"></i>
+                                <h2>No Content Assigned</h2>
+                                <p class="mt-2 text-gray-400">This screen doesn't have any content assigned yet. Please assign a playlist from your CMS dashboard.</p>
+                                <p class="mt-2 text-sm text-gray-500">Screen: ${device.name || 'Unnamed Screen'}</p>
+                            </div>
+                        </div>
+                    `;
                     return;
                 }
-
-                // 2. Success
-                localStorage.setItem('pair_code', input);
-                myCode = input;
-                startPlayer();
-
-            } catch (e) {
-                if(!silent) alert("Connection Error: " + e.message);
-            }
-        }
-
-        function startPlayer() {
-            document.getElementById('setup').classList.add('hidden');
-            document.getElementById('player').classList.remove('hidden');
-            
-            // Poll for updates every 10 seconds
-            setInterval(checkUpdates, 10000); 
-            checkUpdates();
-        }
-
-        async function checkUpdates() {
-            document.getElementById('status-bar').innerText = "Checking updates...";
-
-            // 1. SELF-HEALING: Check if device still exists
-            const { data: device, error } = await sb
-                .from('devices')
-                .select('playlist_id')
-                .eq('code', myCode)
-                .single();
-
-            // If device was deleted in CMS, reset the player
-            if (error || !device) {
-                alert("Device unlinked from CMS. Resetting...");
-                localStorage.removeItem('pair_code');
-                location.reload();
-                return;
-            }
-
-            // 2. Heartbeat (Tell CMS we are online)
-            await sb.from('devices')
-                .update({ status: 'online', last_seen: new Date() })
-                .eq('code', myCode);
-            
-            if (device.playlist_id) {
-                // 3. Get Playlist Items
-                const { data: playlist } = await sb
+                
+                // Get playlist information
+                const { data: playlist, error: playlistError } = await sb
                     .from('playlists')
-                    .select('items')
+                    .select('items, name')
                     .eq('id', device.playlist_id)
                     .single();
                 
-                if(playlist && playlist.items && playlist.items.length > 0) {
-                    const mediaIds = playlist.items.map(i => i.id);
-                    
-                    // 4. Fetch Media Files
-                    const { data: mediaFiles } = await sb
-                        .from('media')
-                        .select('*')
-                        .in('id', mediaIds);
-                    
-                    // 5. Merge Data
-                    const finalPlaylist = playlist.items.map(pItem => {
-                        const fileData = mediaFiles.find(f => f.id === pItem.id);
-                        if (!fileData) return null;
-                        return { 
-                            ...fileData, 
-                            duration: pItem.duration 
-                        }; 
-                    }).filter(Boolean); // Remove nulls
-
-                    if(finalPlaylist.length > 0) {
-                        smartDownload(finalPlaylist);
-                    }
-                } else {
-                     document.getElementById('status-bar').innerText = "Playlist is empty";
-                     document.getElementById('stage').innerHTML = '';
+                if (playlistError || !playlist) {
+                    throw new Error('Could not load playlist data.');
                 }
-            } else {
-                document.getElementById('status-bar').innerText = "No Playlist Assigned";
-                document.getElementById('stage').innerHTML = ''; 
-            }
-        }
-
-        // --- CACHING & PLAYBACK ---
-        async function smartDownload(items) {
-            document.getElementById('status-bar').innerText = "Downloading content...";
-            
-            for (let item of items) {
-                if (!cache[item.id]) {
-                    try {
-                        console.log("Downloading", item.name);
-                        const response = await fetch(item.url);
-                        const blob = await response.blob();
-                        cache[item.id] = URL.createObjectURL(blob);
-                    } catch (e) {
-                        console.error("Failed to cache", item.name);
-                    }
-                }
-            }
-            
-            if (!window.loopRunning) {
-                window.loopRunning = true;
-                runLoop(items);
-            }
-        }
-
-        function runLoop(items) {
-            let index = 0;
-            const stage = document.getElementById('stage');
-
-            const nextSlide = () => {
-                const itemData = items[index];
-                const cachedUrl = cache[itemData.id] || itemData.url; 
-
-                // ⚠️ IMPORTANT: These are Backticks (`), not quotes (')
-                stage.innerHTML = `<img src="${cachedUrl}" class="slide active">`;
                 
-                document.getElementById('status-bar').innerText = `Playing: ${itemData.name}`;
-
-                const duration = (itemData.duration || 10) * 1000;
-
+                if (!playlist.items || playlist.items.length === 0) {
+                    document.getElementById('content-stage').innerHTML = `
+                        <div class="slide active" style="display:flex;align-items:center;justify-content:center;text-align:center;padding:20px">
+                            <div>
+                                <i class="fas fa-list text-6xl mb-4 text-gray-500"></i>
+                                <h2>Empty Playlist</h2>
+                                <p class="mt-2 text-gray-400">The assigned playlist "${playlist.name}" doesn't contain any media items.</p>
+                                <p class="mt-2 text-sm text-gray-500">Screen: ${device.name || 'Unnamed Screen'}</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Prepare to download media files
+                const mediaIds = playlist.items.map(item => item.id);
+                const { data: mediaFiles, error: mediaError } = await sb
+                    .from('media')
+                    .select('id, url, name, type')
+                    .in('id', mediaIds);
+                
+                if (mediaError || !mediaFiles) {
+                    throw new Error('Could not load media files.');
+                }
+                
+                // Create a map of media files by ID
+                const mediaMap = {};
+                mediaFiles.forEach(file => {
+                    mediaMap[file.id] = file;
+                });
+                
+                // Update progress
+                updateProgress(30, 'Downloading content...');
+                
+                // Download and cache media files that have changed
+                const downloadPromises = [];
+                let downloadedCount = 0;
+                
+                playlist.items.forEach((item, index) => {
+                    const mediaFile = mediaMap[item.id];
+                    if (mediaFile) {
+                        downloadPromises.push(downloadAndCacheMedia(mediaFile, () => {
+                            downloadedCount++;
+                            const progress = 30 + Math.floor((downloadedCount / playlist.items.length) * 60);
+                            updateProgress(progress, `Downloading ${downloadedCount}/${playlist.items.length} files`);
+                        }));
+                    }
+                });
+                
+                await Promise.all(downloadPromises);
+                
+                // Update progress
+                updateProgress(95, 'Preparing content...');
+                
+                // Store the updated playlist
+                currentPlaylist = {
+                    ...playlist,
+                    items: playlist.items.map(item => ({
+                        ...item,
+                        media: mediaMap[item.id]
+                    })).filter(item => item.media) // Remove items without media
+                };
+                
+                // Start playback
                 setTimeout(() => {
-                    index = (index + 1) % items.length;
-                    nextSlide();
-                }, duration);
-            };
-
-            nextSlide();
+                    startContentPlayback();
+                    showPlayerScreen(); // Ensure we're on the player screen
+                }, 500);
+                
+            } catch (error) {
+                console.error('Update error:', error);
+                showErrorScreen('Update Failed', 'Could not update content. Will retry shortly.', error.message);
+                
+                // Retry after 30 seconds
+                setTimeout(checkForUpdates, 30000);
+            }
         }
+        
+        async function downloadAndCacheMedia(mediaFile, onProgress) {
+            try {
+                // Check if we already have this media cached and it's still valid
+                const cachedMedia = localStorage.getItem(`simplisign_media_${mediaFile.id}`);
+                if (cachedMedia) {
+                    const cachedData = JSON.parse(cachedMedia);
+                    // Check if the cached version is still valid (less than 24 hours old)
+                    if (Date.now() - cachedData.timestamp < 24 * 60 * 60 * 1000) {
+                        mediaCache[mediaFile.id] = cachedData.url;
+                        if (onProgress) onProgress();
+                        return;
+                    }
+                }
+                
+                // Download the media file
+                const response = await fetch(mediaFile.url);
+                if (!response.ok) {
+                    throw new Error(`Failed to download media: ${response.statusText}`);
+                }
+                
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                
+                // Cache the media file
+                const cacheData = {
+                    url: objectUrl,
+                    timestamp: Date.now(),
+                    type: mediaFile.type,
+                    name: mediaFile.name
+                };
+                
+                mediaCache[mediaFile.id] = objectUrl;
+                localStorage.setItem(`simplisign_media_${mediaFile.id}`, JSON.stringify(cacheData));
+                
+                if (onProgress) onProgress();
+                
+            } catch (error) {
+                console.error(`Error downloading media ${mediaFile.name}:`, error);
+                // Use a placeholder if download fails
+                mediaCache[mediaFile.id] = mediaFile.type === 'image' 
+                    ? `https://placehold.co/600x400?text=${encodeURIComponent(mediaFile.name)}` 
+                    : null;
+            }
+        }
+        
+        function updateProgress(percent, message) {
+            document.getElementById('update-progress').style.width = `${percent}%`;
+            if (message) {
+                document.getElementById('update-details').textContent = message;
+            }
+        }
+        
+        function startContentPlayback() {
+            if (!currentPlaylist || currentPlaylist.items.length === 0) {
+                document.getElementById('content-stage').innerHTML = `
+                    <div class="slide active" style="display:flex;align-items:center;justify-content:center;text-align:center;padding:20px">
+                        <div>
+                            <i class="fas fa-exclamation-triangle text-6xl mb-4 text-yellow-500"></i>
+                            <h2>No Content Available</h2>
+                            <p class="mt-2 text-gray-400">The playlist is empty or no content could be loaded.</p>
+                            <p class="mt-2 text-sm text-gray-500">Checking for updates again in 1 minute...</p>
+                        </div>
+                    </div>
+                `;
+                
+                // Retry after 1 minute
+                setTimeout(checkForUpdates, 60000);
+                return;
+            }
+            
+            // Clear any existing interval
+            if (contentInterval) {
+                clearInterval(contentInterval);
+            }
+            
+            // Clear the stage
+            const stage = document.getElementById('content-stage');
+            stage.innerHTML = '';
+            
+            // Create slides for each media item
+            currentPlaylist.items.forEach((item, index) => {
+                const media = item.media;
+                if (!media) return;
+                
+                const slide = document.createElement('div');
+                slide.className = 'slide';
+                if (index === 0) slide.classList.add('active');
+                
+                if (media.type === 'image') {
+                    slide.innerHTML = `<img src="${mediaCache[media.id] || media.url}" alt="${media.name}" onerror="this.src='https://placehold.co/600x400/red/white?text=Error+Loading'">`;
+                } else if (media.type === 'video') {
+                    slide.innerHTML = `
+                        <video loop onerror="this.parentElement.innerHTML='<div style=\'color:white;text-align:center\'>Error loading video</div>'">
+                            <source src="${mediaCache[media.id] || media.url}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    `;
+                }
+                
+                stage.appendChild(slide);
+            });
+            
+            // Start playback
+            isPlaying = true;
+            currentSlideIndex = 0;
+            showSlide(0);
+            
+            // Set up interval for slide transitions
+            contentInterval = setInterval(() => {
+                nextSlide();
+            }, 10000); // Default 10 second interval, will be adjusted per slide
+        }
+        
+        function showSlide(index) {
+            if (!currentPlaylist || !currentPlaylist.items[index]) return;
+            
+            const slides = document.querySelectorAll('.slide');
+            if (index >= slides.length) index = 0;
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[index].classList.add('active');
+            
+            const currentItem = currentPlaylist.items[index];
+            const media = currentItem.media;
+            
+            // Update status bar with current content
+            if (media) {
+                document.getElementById('status-text').textContent = `Playing: ${media.name}`;
+            }
+            
+            // Set up the interval for this specific slide
+            const duration = (currentItem.duration || 10) * 1000;
+            
+            // Clear existing interval and set a new one
+            if (contentInterval) {
+                clearInterval(contentInterval);
+            }
+            
+            contentInterval = setTimeout(() => {
+                nextSlide();
+            }, duration);
+        }
+        
+        function nextSlide() {
+            if (!currentPlaylist) return;
+            currentSlideIndex = (currentSlideIndex + 1) % currentPlaylist.items.length;
+            showSlide(currentSlideIndex);
+        }
+        
+        async function updateDeviceStatus(status) {
+            if (!deviceId) return;
+            
+            try {
+                await sb.from('devices')
+                    .update({
+                        status: status,
+                        last_seen: new Date().toISOString()
+                    })
+                    .eq('id', deviceId);
+                
+                // Update UI status indicator
+                const statusIcon = document.getElementById('connection-status');
+                const statusText = document.getElementById('status-text');
+                
+                if (status === 'online') {
+                    statusIcon.className = 'fas fa-wifi status-icon status-online';
+                    statusText.textContent = 'Connected';
+                } else {
+                    statusIcon.className = 'fas fa-wifi status-icon status-offline';
+                    statusText.textContent = 'Offline';
+                }
+            } catch (error) {
+                console.error('Error updating device status:', error);
+            }
+        }
+        
+        function startHeartbeat() {
+            // Send heartbeat every 30 seconds
+            heartbeatInterval = setInterval(() => {
+                updateDeviceStatus('online');
+                lastActivity = Date.now();
+            }, 30000);
+            
+            // Check for inactivity every minute
+            setInterval(checkActivity, 60000);
+        }
+        
+        function resetActivityTimer() {
+            lastActivity = Date.now();
+        }
+        
+        function checkActivity() {
+            const inactiveTime = Date.now() - lastActivity;
+            const inactivityThreshold = 15 * 60 * 1000; // 15 minutes
+            
+            if (inactiveTime > inactivityThreshold) {
+                // Go into low-power mode or standby
+                pausePlayback();
+            }
+        }
+        
+        function pausePlayback() {
+            if (contentInterval) {
+                clearInterval(contentInterval);
+            }
+            isPlaying = false;
+            
+            // Show standby screen
+            document.getElementById('content-stage').innerHTML = `
+                <div class="slide active" style="display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;background:#1e293b">
+                    <div>
+                        <i class="fas fa-pause-circle text-6xl mb-4 text-gray-500"></i>
+                        <h2>Standby Mode</h2>
+                        <p class="mt-2 text-gray-400">Screen is inactive. Touch or move mouse to resume.</p>
+                    </div>
+                </div>
+            `;
+            
+            // Add event listener to resume on activity
+            const resumeHandler = () => {
+                document.removeEventListener('mousemove', resumeHandler);
+                document.removeEventListener('keypress', resumeHandler);
+                document.removeEventListener('touchstart', resumeHandler);
+                resumePlayback();
+            };
+            
+            document.addEventListener('mousemove', resumeHandler);
+            document.addEventListener('keypress', resumeHandler);
+            document.addEventListener('touchstart', resumeHandler);
+        }
+        
+        function resumePlayback() {
+            // Update status
+            lastActivity = Date.now();
+            
+            // Check for updates before resuming
+            checkForUpdates();
+        }
+        
+        function retryConnection() {
+            showErrorScreen('Reconnecting...', 'Attempting to reconnect to the server...');
+            
+            setTimeout(async () => {
+                try {
+                    // Test connection
+                    const { error } = await sb.from('devices').select('id').eq('id', deviceId).single();
+                    
+                    if (error) throw error;
+                    
+                    // Connection successful
+                    startPlayer();
+                } catch (error) {
+                    console.error('Reconnection failed:', error);
+                    showErrorScreen('Reconnection Failed', 'Could not reconnect to the server. Please check your internet connection.', error.message);
+                }
+            }, 2000);
+        }
+        
+        // Handle window visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Page is hidden, pause playback
+                if (contentInterval) {
+                    clearInterval(contentInterval);
+                }
+                isPlaying = false;
+            } else {
+                // Page is visible again, resume playback
+                if (!isPlaying && currentPlaylist) {
+                    startContentPlayback();
+                }
+            }
+        });
+        
+        // Handle before unload to clean up
+        window.addEventListener('beforeunload', () => {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+            }
+            if (contentInterval) {
+                clearInterval(contentInterval);
+            }
+            updateDeviceStatus('offline');
+        });
     </script>
 </body>
 </html>
