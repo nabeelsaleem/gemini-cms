@@ -7,47 +7,37 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background: black; cursor: none; }
+        body { background: black; cursor: none; overflow: hidden; }
         .pairing-mode { cursor: default; background: #0f172a; }
         .fade-enter { opacity: 0; transition: opacity 1s ease-in-out; }
         .fade-enter-active { opacity: 1; }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden relative">
+<body class="h-screen w-screen">
 
     <div id="pairing-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center pairing-mode text-white">
-        <div class="text-center space-y-8">
-            <h1 class="text-2xl font-light tracking-[0.2em] text-slate-400">DEVICE PAIRING</h1>
-            <input id="pairing-code" type="text" maxlength="6" placeholder="------" 
-                class="bg-slate-800 border-2 border-slate-700 text-6xl text-center py-6 px-8 rounded-2xl w-96 uppercase tracking-[1rem] outline-none focus:border-blue-500 transition-colors placeholder-slate-700 font-mono">
-            <button onclick="pairDevice()" class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-blue-900/50">
-                CONNECT DEVICE
-            </button>
-            <p id="pair-error" class="text-red-500 h-6"></p>
-        </div>
+        <h1 class="text-xl tracking-widest text-slate-400 mb-8">ENTER PAIRING CODE</h1>
+        <input id="pairing-code" type="text" maxlength="6" placeholder="------" 
+            class="bg-slate-800 border-2 border-slate-700 text-6xl text-center py-6 w-96 uppercase tracking-[1rem] rounded-xl outline-none focus:border-blue-500 mb-8">
+        <button onclick="pairDevice()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-12 rounded-full text-xl transition shadow-lg shadow-blue-900/50">
+            CONNECT
+        </button>
+        <p id="status-msg" class="text-red-500 mt-4 h-6"></p>
     </div>
 
     <div id="player-canvas" class="absolute inset-0 bg-black hidden">
         <img id="active-slide" class="w-full h-full object-contain absolute inset-0 fade-enter">
-        
-        <div id="status-pill" class="absolute bottom-4 right-4 bg-black/50 backdrop-blur text-white/50 text-xs px-3 py-1 rounded-full font-mono">
-            Connecting...
-        </div>
-        
-        <div id="empty-state" class="hidden absolute inset-0 flex items-center justify-center flex-col text-slate-600">
-            <svg class="w-24 h-24 mb-4 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"/></svg>
-            <h2 class="text-2xl font-bold opacity-50">No Content Scheduled</h2>
-        </div>
+        <div id="status-pill" class="absolute bottom-4 right-4 bg-black/50 backdrop-blur text-white/50 text-xs px-3 py-1 rounded-full font-mono z-10">Starting...</div>
     </div>
 
     <script>
         // --- CONFIGURATION ---
-        const SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
+         const SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co '; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- STATE ---
         let deviceCode = localStorage.getItem('ss_device_code');
+        let deviceId = null;
         let currentPlaylist = [];
         let currentIndex = 0;
         let imageCache = {};
@@ -56,112 +46,102 @@
         // --- INIT ---
         if (deviceCode) {
             document.getElementById('pairing-code').value = deviceCode;
-            startPlayerMode();
+            pairDevice(true);
         }
 
-        async function pairDevice() {
+        async function pairDevice(silent = false) {
             const code = document.getElementById('pairing-code').value.toUpperCase();
-            const btn = document.querySelector('button');
-            const err = document.getElementById('pair-error');
-            
-            btn.innerHTML = '<span class="animate-spin inline-block mr-2">⟳</span> Connecting...';
-            err.innerText = '';
+            if(!silent) document.querySelector('button').innerText = 'CONNECTING...';
 
-            // Check Code against DB
-            const { data, error } = await sb.from('devices').select('*').eq('code', code).single();
+            const { data, error } = await sb.from('devices').select('id, code').eq('code', code).single();
             
             if (error || !data) {
-                btn.innerText = 'CONNECT DEVICE';
-                err.innerText = 'Invalid Pairing Code';
+                if(!silent) {
+                    document.getElementById('status-msg').innerText = 'Invalid Code or Network Error';
+                    document.querySelector('button').innerText = 'CONNECT';
+                }
                 return;
             }
 
-            // Success
             localStorage.setItem('ss_device_code', code);
             deviceCode = code;
-            startPlayerMode();
-        }
-
-        function startPlayerMode() {
+            deviceId = data.id;
+            
             document.getElementById('pairing-screen').classList.add('hidden');
             document.getElementById('player-canvas').classList.remove('hidden');
             
-            // Start Loops
-            checkUpdates(); // Immediate check
-            setInterval(checkUpdates, 15000); // Poll every 15s
+            checkUpdates();
+            setInterval(checkUpdates, 15000); // Check every 15s
         }
 
-        // --- CORE LOGIC ---
         async function checkUpdates() {
             updateStatus('Checking...');
-
+            
             // 1. Heartbeat
             await sb.from('devices').update({ status: 'online', last_seen: new Date() }).eq('code', deviceCode);
 
-            // 2. Fetch Device Config
-            const { data: device } = await sb.from('devices').select('playlist_id').eq('code', deviceCode).single();
-            
-            if (!device || !device.playlist_id) {
-                stopPlayback('No Playlist Assigned');
-                return;
-            }
+            // 2. Fetch Device & Default Playlist
+            const { data: device } = await sb.from('devices').select('playlist_id').eq('id', deviceId).single();
+            if(!device) return reloadApp(); // Device deleted
 
-            // 3. Fetch Playlist & Schedule Check
-            const { data: playlist } = await sb.from('playlists').select('*').eq('id', device.playlist_id).single();
-            
+            // 3. CHECK SCHEDULES (Priority)
             const now = new Date();
-            if (playlist.schedule_start && new Date(playlist.schedule_start) > now) {
-                stopPlayback('Scheduled for Future');
-                return;
-            }
-            if (playlist.schedule_end && new Date(playlist.schedule_end) < now) {
-                stopPlayback('Schedule Expired');
-                return;
-            }
-
-            if (!playlist.items || playlist.items.length === 0) {
-                stopPlayback('Playlist Empty');
-                return;
-            }
-
-            // 4. Content Sync
-            // Fetch actual URLs for items
-            const ids = playlist.items.map(i => i.id);
-            const { data: mediaFiles } = await sb.from('media').select('id, url, name').in('id', ids);
+            const currentTime = now.toTimeString().slice(0,5); // "14:30"
             
-            // Merge duration from playlist with URL from media
+            const { data: schedules } = await sb.from('schedules')
+                .select('*')
+                .eq('device_id', deviceId);
+
+            let activePlaylistId = device.playlist_id; // Default
+
+            // If a schedule matches NOW, override default
+            if(schedules && schedules.length > 0) {
+                const activeSchedule = schedules.find(s => currentTime >= s.start_time && currentTime <= s.end_time);
+                if(activeSchedule) {
+                    activePlaylistId = activeSchedule.playlist_id;
+                    updateStatus(`Scheduled: ${s.start_time}-${s.end_time}`);
+                }
+            }
+
+            if (!activePlaylistId) {
+                stopPlayback();
+                updateStatus('No Content');
+                return;
+            }
+
+            // 4. Load Playlist Items
+            const { data: playlist } = await sb.from('playlists').select('items').eq('id', activePlaylistId).single();
+            
+            if (!playlist || !playlist.items || !playlist.items.length) {
+                stopPlayback(); 
+                return;
+            }
+
+            // 5. Sync Content
+            const ids = playlist.items.map(i => i.id);
+            const { data: mediaFiles } = await sb.from('media').select('id, url').in('id', ids);
+            
             const newQueue = playlist.items.map(pItem => {
                 const file = mediaFiles.find(f => f.id === pItem.id);
                 return file ? { ...file, duration: pItem.duration } : null;
             }).filter(Boolean);
 
-            // If queue changed, restart playback
             if (JSON.stringify(newQueue) !== JSON.stringify(currentPlaylist)) {
-                console.log('Playlist updated, syncing...');
                 currentPlaylist = newQueue;
                 currentIndex = 0;
                 preloadImages(currentPlaylist);
-                if (!isPlaying) runSlideLoop();
+                if (!isPlaying) runLoop();
             }
-            
-            updateStatus('Online');
         }
 
-        function stopPlayback(reason) {
-            currentPlaylist = [];
-            isPlaying = false;
+        function updateStatus(msg) { document.getElementById('status-pill').innerText = msg; }
+        
+        function stopPlayback() {
+            currentPlaylist = []; isPlaying = false;
             document.getElementById('active-slide').src = '';
-            document.getElementById('empty-state').classList.remove('hidden');
-            document.querySelector('#empty-state h2').innerText = reason;
         }
 
-        function updateStatus(msg) {
-            document.getElementById('status-pill').innerText = msg;
-        }
-
-        // --- PLAYBACK ENGINE ---
-        async function preloadImages(queue) {
-            // Cache images in browser memory
+        function preloadImages(queue) {
             queue.forEach(item => {
                 if (!imageCache[item.url]) {
                     const img = new Image();
@@ -171,34 +151,26 @@
             });
         }
 
-        function runSlideLoop() {
+        function runLoop() {
             if (currentPlaylist.length === 0) return;
-            
             isPlaying = true;
-            document.getElementById('empty-state').classList.add('hidden');
             
             const item = currentPlaylist[currentIndex];
             const slide = document.getElementById('active-slide');
             
-            // Fade Effect
             slide.classList.remove('fade-enter-active');
             
             setTimeout(() => {
                 slide.src = item.url;
                 slide.classList.add('fade-enter-active');
                 
-                // Prepare Next Loop
                 const nextDuration = (item.duration || 10) * 1000;
                 currentIndex = (currentIndex + 1) % currentPlaylist.length;
-                
-                // Preload Next Image specifically (high priority)
-                const nextItem = currentPlaylist[currentIndex];
-                const preload = new Image();
-                preload.src = nextItem.url;
-
-                setTimeout(runSlideLoop, nextDuration);
-            }, 200); // Short delay for fade out visual
+                setTimeout(runLoop, nextDuration);
+            }, 500);
         }
+
+        function reloadApp() { localStorage.removeItem('ss_device_code'); location.reload(); }
     </script>
 </body>
 </html>
