@@ -3,212 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Player</title>
+    <title>SimpliSign Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { margin: 0; background: black; color: white; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        .hidden { display: none !important; }
-        
-        /* Pairing Screen */
-        #setup { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #0f172a; }
-        input { font-size: 3rem; text-align: center; width: 350px; padding: 15px; margin: 30px 0; text-transform: uppercase; letter-spacing: 10px; background: #1e293b; border: 2px solid #334155; color: white; border-radius: 12px; outline: none; transition: 0.3s; }
-        input:focus { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-        button { padding: 15px 50px; font-size: 1.2rem; cursor: pointer; background: #3b82f6; color: white; border: none; border-radius: 50px; font-weight: bold; transition: 0.2s; }
-        button:hover { background: #2563eb; transform: scale(1.05); }
-
-        /* Player Screen */
-        #player { position: relative; width: 100vw; height: 100vh; }
-        .slide { position: absolute; top:0; left:0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 1s; background: black; }
-        .active { opacity: 1; }
-        
-        #status-bar { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 20px; color: rgba(255,255,255,0.8); font-size: 0.8rem; z-index: 100; backdrop-filter: blur(4px); }
+        body { background: black; cursor: none; }
+        .pairing-mode { cursor: default; background: #0f172a; }
+        .fade-enter { opacity: 0; transition: opacity 1s ease-in-out; }
+        .fade-enter-active { opacity: 1; }
     </style>
 </head>
-<body>
+<body class="h-screen w-screen overflow-hidden relative">
 
-    <div id="setup">
-        <h1 style="color:#94a3b8; margin:0; letter-spacing:2px; font-weight:400">ENTER PAIRING CODE</h1>
-        <input id="code" maxlength="6" placeholder="------">
-        <button onclick="pair()">CONNECT DEVICE</button>
+    <div id="pairing-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center pairing-mode text-white">
+        <div class="text-center space-y-8">
+            <h1 class="text-2xl font-light tracking-[0.2em] text-slate-400">DEVICE PAIRING</h1>
+            <input id="pairing-code" type="text" maxlength="6" placeholder="------" 
+                class="bg-slate-800 border-2 border-slate-700 text-6xl text-center py-6 px-8 rounded-2xl w-96 uppercase tracking-[1rem] outline-none focus:border-blue-500 transition-colors placeholder-slate-700 font-mono">
+            <button onclick="pairDevice()" class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-blue-900/50">
+                CONNECT DEVICE
+            </button>
+            <p id="pair-error" class="text-red-500 h-6"></p>
+        </div>
     </div>
 
-    <div id="player" class="hidden">
-        <div id="stage"></div>
-        <div id="status-bar">Connecting...</div>
+    <div id="player-canvas" class="absolute inset-0 bg-black hidden">
+        <img id="active-slide" class="w-full h-full object-contain absolute inset-0 fade-enter">
+        
+        <div id="status-pill" class="absolute bottom-4 right-4 bg-black/50 backdrop-blur text-white/50 text-xs px-3 py-1 rounded-full font-mono">
+            Connecting...
+        </div>
+        
+        <div id="empty-state" class="hidden absolute inset-0 flex items-center justify-center flex-col text-slate-600">
+            <svg class="w-24 h-24 mb-4 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"/></svg>
+            <h2 class="text-2xl font-bold opacity-50">No Content Scheduled</h2>
+        </div>
     </div>
 
     <script>
         // --- CONFIGURATION ---
-        // ⚠️ PASTE YOUR KEYS HERE ⚠️
-        const YOUR_SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
-        const YOUR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4'; // <-- PASTE YOUR LONG KEY HERE
+        const SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const sb = supabase.createClient(YOUR_SUPABASE_URL, YOUR_SUPABASE_KEY);
+        // --- STATE ---
+        let deviceCode = localStorage.getItem('ss_device_code');
+        let currentPlaylist = [];
+        let currentIndex = 0;
+        let imageCache = {};
+        let isPlaying = false;
 
-        let myCode = localStorage.getItem('pair_code');
-        let cache = {}; 
-        let loopRunning = false;
-
-        // Auto-start if paired before
-        if (myCode) {
-            document.getElementById('code').value = myCode;
-            pair(true); // true = silent mode
+        // --- INIT ---
+        if (deviceCode) {
+            document.getElementById('pairing-code').value = deviceCode;
+            startPlayerMode();
         }
 
-        async function pair(silent = false) {
-            const input = document.getElementById('code').value.toUpperCase();
+        async function pairDevice() {
+            const code = document.getElementById('pairing-code').value.toUpperCase();
+            const btn = document.querySelector('button');
+            const err = document.getElementById('pair-error');
             
-            if(!input) {
-                if(!silent) alert("Please enter a code");
+            btn.innerHTML = '<span class="animate-spin inline-block mr-2">⟳</span> Connecting...';
+            err.innerText = '';
+
+            // Check Code against DB
+            const { data, error } = await sb.from('devices').select('*').eq('code', code).single();
+            
+            if (error || !data) {
+                btn.innerText = 'CONNECT DEVICE';
+                err.innerText = 'Invalid Pairing Code';
                 return;
             }
 
-            try {
-                // 1. Check if code exists in DB
-                const { data, error } = await sb
-                    .from('devices')
-                    .select('*')
-                    .eq('code', input)
-                    .single(); 
-                
-                if (error || !data) {
-                    if(error && error.code === '42501') {
-                        alert("Permission Denied: Did you run the SQL policies?");
-                    } else if (!silent) {
-                        alert("Invalid Code. Please check CMS.");
-                    }
-                    // Reset if invalid
-                    localStorage.removeItem('pair_code');
-                    return;
-                }
-
-                // 2. Success
-                localStorage.setItem('pair_code', input);
-                myCode = input;
-                startPlayer();
-
-            } catch (e) {
-                if(!silent) alert("Connection Error: " + e.message);
-            }
+            // Success
+            localStorage.setItem('ss_device_code', code);
+            deviceCode = code;
+            startPlayerMode();
         }
 
-        function startPlayer() {
-            document.getElementById('setup').classList.add('hidden');
-            document.getElementById('player').classList.remove('hidden');
+        function startPlayerMode() {
+            document.getElementById('pairing-screen').classList.add('hidden');
+            document.getElementById('player-canvas').classList.remove('hidden');
             
-            // Poll for updates every 10 seconds
-            setInterval(checkUpdates, 10000); 
-            checkUpdates();
+            // Start Loops
+            checkUpdates(); // Immediate check
+            setInterval(checkUpdates, 15000); // Poll every 15s
         }
 
+        // --- CORE LOGIC ---
         async function checkUpdates() {
-            document.getElementById('status-bar').innerText = "Checking updates...";
+            updateStatus('Checking...');
 
-            // 1. SELF-HEALING: Check if device still exists
-            const { data: device, error } = await sb
-                .from('devices')
-                .select('playlist_id')
-                .eq('code', myCode)
-                .single();
+            // 1. Heartbeat
+            await sb.from('devices').update({ status: 'online', last_seen: new Date() }).eq('code', deviceCode);
 
-            // If device was deleted in CMS, reset the player
-            if (error || !device) {
-                alert("Device unlinked from CMS. Resetting...");
-                localStorage.removeItem('pair_code');
-                location.reload();
+            // 2. Fetch Device Config
+            const { data: device } = await sb.from('devices').select('playlist_id').eq('code', deviceCode).single();
+            
+            if (!device || !device.playlist_id) {
+                stopPlayback('No Playlist Assigned');
                 return;
             }
 
-            // 2. Heartbeat (Tell CMS we are online)
-            await sb.from('devices')
-                .update({ status: 'online', last_seen: new Date() })
-                .eq('code', myCode);
+            // 3. Fetch Playlist & Schedule Check
+            const { data: playlist } = await sb.from('playlists').select('*').eq('id', device.playlist_id).single();
             
-            if (device.playlist_id) {
-                // 3. Get Playlist Items
-                const { data: playlist } = await sb
-                    .from('playlists')
-                    .select('items')
-                    .eq('id', device.playlist_id)
-                    .single();
-                
-                if(playlist && playlist.items && playlist.items.length > 0) {
-                    const mediaIds = playlist.items.map(i => i.id);
-                    
-                    // 4. Fetch Media Files
-                    const { data: mediaFiles } = await sb
-                        .from('media')
-                        .select('*')
-                        .in('id', mediaIds);
-                    
-                    // 5. Merge Data
-                    const finalPlaylist = playlist.items.map(pItem => {
-                        const fileData = mediaFiles.find(f => f.id === pItem.id);
-                        if (!fileData) return null;
-                        return { 
-                            ...fileData, 
-                            duration: pItem.duration 
-                        }; 
-                    }).filter(Boolean); // Remove nulls
-
-                    if(finalPlaylist.length > 0) {
-                        smartDownload(finalPlaylist);
-                    }
-                } else {
-                     document.getElementById('status-bar').innerText = "Playlist is empty";
-                     document.getElementById('stage').innerHTML = '';
-                }
-            } else {
-                document.getElementById('status-bar').innerText = "No Playlist Assigned";
-                document.getElementById('stage').innerHTML = ''; 
+            const now = new Date();
+            if (playlist.schedule_start && new Date(playlist.schedule_start) > now) {
+                stopPlayback('Scheduled for Future');
+                return;
             }
+            if (playlist.schedule_end && new Date(playlist.schedule_end) < now) {
+                stopPlayback('Schedule Expired');
+                return;
+            }
+
+            if (!playlist.items || playlist.items.length === 0) {
+                stopPlayback('Playlist Empty');
+                return;
+            }
+
+            // 4. Content Sync
+            // Fetch actual URLs for items
+            const ids = playlist.items.map(i => i.id);
+            const { data: mediaFiles } = await sb.from('media').select('id, url, name').in('id', ids);
+            
+            // Merge duration from playlist with URL from media
+            const newQueue = playlist.items.map(pItem => {
+                const file = mediaFiles.find(f => f.id === pItem.id);
+                return file ? { ...file, duration: pItem.duration } : null;
+            }).filter(Boolean);
+
+            // If queue changed, restart playback
+            if (JSON.stringify(newQueue) !== JSON.stringify(currentPlaylist)) {
+                console.log('Playlist updated, syncing...');
+                currentPlaylist = newQueue;
+                currentIndex = 0;
+                preloadImages(currentPlaylist);
+                if (!isPlaying) runSlideLoop();
+            }
+            
+            updateStatus('Online');
         }
 
-        // --- CACHING & PLAYBACK ---
-        async function smartDownload(items) {
-            document.getElementById('status-bar').innerText = "Downloading content...";
-            
-            for (let item of items) {
-                if (!cache[item.id]) {
-                    try {
-                        console.log("Downloading", item.name);
-                        const response = await fetch(item.url);
-                        const blob = await response.blob();
-                        cache[item.id] = URL.createObjectURL(blob);
-                    } catch (e) {
-                        console.error("Failed to cache", item.name);
-                    }
-                }
-            }
-            
-            if (!window.loopRunning) {
-                window.loopRunning = true;
-                runLoop(items);
-            }
+        function stopPlayback(reason) {
+            currentPlaylist = [];
+            isPlaying = false;
+            document.getElementById('active-slide').src = '';
+            document.getElementById('empty-state').classList.remove('hidden');
+            document.querySelector('#empty-state h2').innerText = reason;
         }
 
-        function runLoop(items) {
-            let index = 0;
-            const stage = document.getElementById('stage');
+        function updateStatus(msg) {
+            document.getElementById('status-pill').innerText = msg;
+        }
 
-            const nextSlide = () => {
-                const itemData = items[index];
-                const cachedUrl = cache[itemData.id] || itemData.url; 
+        // --- PLAYBACK ENGINE ---
+        async function preloadImages(queue) {
+            // Cache images in browser memory
+            queue.forEach(item => {
+                if (!imageCache[item.url]) {
+                    const img = new Image();
+                    img.src = item.url;
+                    imageCache[item.url] = img;
+                }
+            });
+        }
 
-                // ⚠️ IMPORTANT: These are Backticks (`), not quotes (')
-                stage.innerHTML = `<img src="${cachedUrl}" class="slide active">`;
+        function runSlideLoop() {
+            if (currentPlaylist.length === 0) return;
+            
+            isPlaying = true;
+            document.getElementById('empty-state').classList.add('hidden');
+            
+            const item = currentPlaylist[currentIndex];
+            const slide = document.getElementById('active-slide');
+            
+            // Fade Effect
+            slide.classList.remove('fade-enter-active');
+            
+            setTimeout(() => {
+                slide.src = item.url;
+                slide.classList.add('fade-enter-active');
                 
-                document.getElementById('status-bar').innerText = `Playing: ${itemData.name}`;
+                // Prepare Next Loop
+                const nextDuration = (item.duration || 10) * 1000;
+                currentIndex = (currentIndex + 1) % currentPlaylist.length;
+                
+                // Preload Next Image specifically (high priority)
+                const nextItem = currentPlaylist[currentIndex];
+                const preload = new Image();
+                preload.src = nextItem.url;
 
-                const duration = (itemData.duration || 10) * 1000;
-
-                setTimeout(() => {
-                    index = (index + 1) % items.length;
-                    nextSlide();
-                }, duration);
-            };
-
-            nextSlide();
+                setTimeout(runSlideLoop, nextDuration);
+            }, 200); // Short delay for fade out visual
         }
     </script>
 </body>
