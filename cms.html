@@ -3,444 +3,618 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SimpliSign Dashboard</title>
+    <title>SimpliSign Enterprise CMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        :root { --primary: #2563eb; --sidebar: #0f172a; --bg: #f3f4f6; --danger: #ef4444; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .sidebar-link { transition: all 0.2s; }
+        .sidebar-link:hover, .sidebar-link.active { background-color: #1e293b; border-right: 4px solid #3b82f6; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        /* AUTH SCREEN */
-        #auth-screen { position: fixed; inset: 0; background: #0f172a; z-index: 1000; display: flex; align-items: center; justify-content: center; }
-        .auth-box { background: white; padding: 40px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; }
-        .auth-input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #e2e8f0; border-radius: 6px; box-sizing: border-box; }
-        .btn-auth { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
-
-        /* DASHBOARD LAYOUT */
-        #dashboard { display: flex; width: 100%; opacity: 0; transition: opacity 0.5s; }
-        #dashboard.visible { opacity: 1; }
-
-        /* SIDEBAR */
-        aside { width: 260px; background: var(--sidebar); color: white; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
-        .brand { font-size: 1.5rem; font-weight: 700; margin-bottom: 40px; display: flex; align-items: center; gap: 10px; }
-        .nav-item { padding: 12px 15px; margin-bottom: 5px; cursor: pointer; border-radius: 8px; color: #94a3b8; font-weight: 500; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
-        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: white; }
-        .usage-box { margin-top: auto; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; font-size: 0.85rem; }
-        .progress-bar { height: 6px; background: #334155; border-radius: 3px; margin-top: 8px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.5s; }
-
-        /* MAIN CONTENT */
-        main { flex: 1; padding: 30px; overflow-y: auto; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        h1 { margin: 0; font-size: 1.8rem; color: #1e293b; }
-        .btn { padding: 10px 20px; border-radius: 6px; border: none; font-weight: 500; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-danger { background: #fee2e2; color: var(--danger); }
-        .btn-outline { background: white; border: 1px solid #cbd5e1; color: #475569; }
-
-        /* GRIDS & LISTS */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-        .card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; transition: transform 0.2s; position: relative; }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-        .card-img { height: 140px; width: 100%; object-fit: cover; background: #f1f5f9; }
-        .card-body { padding: 15px; }
-        .card-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .card-actions { display: flex; justify-content: flex-end; gap: 5px; margin-top: 10px; }
-
-        /* PLAYLIST BUILDER */
-        .playlist-row { display: flex; align-items: center; background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #e2e8f0; justify-content: space-between; }
-        
-        /* MODALS */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 500; backdrop-filter: blur(2px); }
-        .modal-overlay.open { display: flex; }
-        .modal { background: white; width: 90%; max-width: 600px; padding: 30px; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-        /* UTILS */
-        .hidden { display: none; }
-        .badge { padding: 4px 8px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
-        .badge-online { background: #dcfce7; color: #166534; }
-        .badge-offline { background: #fee2e2; color: #991b1b; }
+        /* Toast Animation */
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast { animation: slideIn 0.3s ease-out; }
     </style>
 </head>
-<body>
+<body class="text-slate-800 h-screen overflow-hidden flex">
 
-    <div id="auth-screen">
-        <div class="auth-box">
-            <h2 style="margin-top:0">SimpliSign Login</h2>
-            <button class="btn-auth" style="background:white; color:#333; border:1px solid #ccc; margin-bottom:20px" onclick="loginGoogle()">
-                <img src="https://www.svgrepo.com/show/475656/google-color.svg" width="20" style="vertical-align:middle; margin-right:8px"> Sign in with Google
-            </button>
-            <p style="color:#666; font-size:0.9rem">or use email</p>
-            <input type="email" id="email" class="auth-input" placeholder="Email">
-            <input type="password" id="password" class="auth-input" placeholder="Password">
-            <button class="btn-auth" onclick="handleEmailAuth()" id="auth-btn">Login</button>
-            <p style="margin-top:20px; font-size:0.9rem; cursor:pointer; color:var(--primary)" onclick="toggleAuthMode()" id="toggle-auth">Create an account</p>
-        </div>
-    </div>
-
-    <div id="dashboard" class="hidden">
-        <aside>
-            <div class="brand">📺 SimpliSign</div>
-            <nav>
-                <div class="nav-item active" onclick="nav('media')">🖼️ Media Library</div>
-                <div class="nav-item" onclick="nav('playlists')">🎬 Playlists</div>
-                <div class="nav-item" onclick="nav('screens')">🖥️ Screens</div>
-            </nav>
-            <div class="usage-box">
-                <div style="display:flex; justify-content:space-between">
-                    <span>Screen Limit</span>
-                    <span id="limit-text">0/3</span>
-                </div>
-                <div class="progress-bar"><div class="progress-fill" id="limit-bar"></div></div>
-                <button onclick="showUpgrade()" style="width:100%; margin-top:15px; background:linear-gradient(90deg, #f59e0b, #d97706); border:none; padding:8px; border-radius:4px; color:white; cursor:pointer; font-size:0.8rem; font-weight:bold">⚡ Upgrade to Pro</button>
-                <div style="text-align:center; margin-top:10px; cursor:pointer; opacity:0.7" onclick="logout()">Logout</div>
-            </div>
-        </aside>
-
-        <main>
-            <section id="view-media">
-                <header>
-                    <h1>Media Library</h1>
-                    <div>
-                        <input type="file" id="file-upload" hidden onchange="uploadMedia()">
-                        <button class="btn btn-primary" onclick="document.getElementById('file-upload').click()">+ Upload Media</button>
-                    </div>
-                </header>
-                <div id="media-grid" class="grid"></div>
-            </section>
-
-            <section id="view-playlists" class="hidden">
-                <header>
-                    <h1>Playlists</h1>
-                    <button class="btn btn-primary" onclick="openPlaylistModal()">+ New Playlist</button>
-                </header>
-                <div id="playlist-list" class="grid"></div>
-            </section>
-
-            <section id="view-screens" class="hidden">
-                <header>
-                    <h1>Connected Screens</h1>
-                    <button class="btn btn-primary" onclick="addScreen()">+ Connect Screen</button>
-                </header>
-                <div id="screen-list" class="grid"></div>
-            </section>
-        </main>
-    </div>
-
-    <div id="playlist-modal" class="modal-overlay">
-        <div class="modal" style="max-width:800px">
-            <h2 id="pl-modal-title">Create Playlist</h2>
-            <input type="hidden" id="pl-id">
-            <div style="margin-bottom:20px">
-                <label style="font-weight:600; font-size:0.9rem">Playlist Name</label>
-                <input type="text" id="pl-name" class="auth-input" placeholder="e.g. Morning Menu">
+    <div id="auth-view" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-content-center hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md mx-auto text-center">
+            <div class="mb-6">
+                <i class="fa-solid fa-tv text-4xl text-blue-600"></i>
+                <h1 class="text-2xl font-bold mt-2 text-slate-800">SimpliSign Workspace</h1>
+                <p class="text-slate-500">Enterprise Digital Signage</p>
             </div>
             
-            <div style="display:flex; gap:20px; height:400px">
-                <div style="flex:1; border:1px solid #e2e8f0; border-radius:8px; padding:10px; overflow-y:auto">
-                    <h4 style="margin-top:0">Available Media</h4>
-                    <div id="pl-media-source"></div>
+            <button onclick="signInGoogle()" class="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-3 px-4 rounded-lg transition-all mb-4">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5">
+                Sign in with Google
+            </button>
+
+            <div class="relative my-6">
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-slate-500">Or continue with email</span></div>
+            </div>
+
+            <form onsubmit="handleEmailAuth(event)" class="space-y-4">
+                <input type="email" id="email" placeholder="name@company.com" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="password" id="password" placeholder="Password" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all">
+                    Sign In / Register
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <aside id="sidebar" class="w-64 bg-slate-900 text-white flex-col hidden md:flex">
+        <div class="p-6 border-b border-slate-800 flex items-center gap-3">
+            <i class="fa-solid fa-tv text-blue-500 text-xl"></i>
+            <span class="font-bold text-lg tracking-tight">SimpliSign</span>
+        </div>
+        
+        <nav class="flex-1 py-6 space-y-1">
+            <button onclick="nav('media')" class="sidebar-link active w-full text-left px-6 py-3 flex items-center gap-3 text-slate-300 hover:text-white">
+                <i class="fa-regular fa-images w-5"></i> Media Library
+            </button>
+            <button onclick="nav('playlists')" class="sidebar-link w-full text-left px-6 py-3 flex items-center gap-3 text-slate-300 hover:text-white">
+                <i class="fa-solid fa-layer-group w-5"></i> Playlists
+            </button>
+            <button onclick="nav('devices')" class="sidebar-link w-full text-left px-6 py-3 flex items-center gap-3 text-slate-300 hover:text-white">
+                <i class="fa-solid fa-desktop w-5"></i> Devices
+            </button>
+            <button onclick="nav('profile')" class="sidebar-link w-full text-left px-6 py-3 flex items-center gap-3 text-slate-300 hover:text-white">
+                <i class="fa-solid fa-user-gear w-5"></i> Profile
+            </button>
+        </nav>
+
+        <div class="p-6 border-t border-slate-800">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold" id="user-avatar">U</div>
+                <div class="text-sm overflow-hidden">
+                    <p class="font-medium truncate" id="user-name">User</p>
+                    <p class="text-xs text-slate-500 truncate" id="user-email">email@test.com</p>
                 </div>
-                <div style="flex:1; border:1px solid #e2e8f0; border-radius:8px; padding:10px; overflow-y:auto; background:#f8fafc">
-                    <h4 style="margin-top:0">Playlist Sequence</h4>
-                    <div id="pl-media-target">
-                        <p style="color:#94a3b8; text-align:center; margin-top:50px">Click media on the left to add here</p>
+            </div>
+            <button onclick="logout()" class="w-full text-xs text-red-400 hover:text-red-300 flex items-center gap-2">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+            </button>
+        </div>
+    </aside>
+
+    <main id="main-content" class="flex-1 flex flex-col h-screen overflow-hidden hidden">
+        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shadow-sm">
+            <h2 id="page-title" class="text-xl font-bold text-slate-800">Media Library</h2>
+            <div class="flex items-center gap-4">
+                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm shadow-blue-200" id="primary-action-btn">
+                    <i class="fa-solid fa-plus mr-2"></i> Upload Media
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto p-6 relative">
+            
+            <div id="view-media" class="space-y-6">
+                <input type="file" id="media-upload-input" class="hidden" multiple onchange="processUpload()">
+                <div id="media-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    </div>
+                <div id="media-empty" class="hidden flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-300 rounded-xl">
+                    <i class="fa-regular fa-image text-4xl mb-3"></i>
+                    <p>No media found. Upload something!</p>
+                </div>
+            </div>
+
+            <div id="view-playlists" class="hidden space-y-6">
+                <div id="playlist-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+
+            <div id="view-devices" class="hidden space-y-6">
+                <div id="device-stats" class="grid grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <span class="text-slate-500 text-sm font-medium">Total Screens</span>
+                        <div class="text-2xl font-bold" id="stat-total">0</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <span class="text-green-600 text-sm font-medium">Online</span>
+                        <div class="text-2xl font-bold text-green-700" id="stat-online">0</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <span class="text-red-500 text-sm font-medium">Offline</span>
+                        <div class="text-2xl font-bold text-red-700" id="stat-offline">0</div>
+                    </div>
+                </div>
+                <div id="device-list" class="space-y-4"></div>
+            </div>
+
+            <div id="view-profile" class="hidden max-w-2xl mx-auto">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="h-32 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+                    <div class="px-8 pb-8">
+                        <div class="relative -mt-12 mb-6">
+                            <div class="w-24 h-24 bg-white rounded-full p-1 shadow-lg">
+                                <img id="profile-img" src="https://ui-avatars.com/api/?name=User" class="w-full h-full rounded-full object-cover">
+                            </div>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800" id="profile-name">Loading...</h3>
+                        <p class="text-slate-500" id="profile-email">...</p>
+                        
+                        <div class="mt-8 border-t border-slate-100 pt-6">
+                            <h4 class="font-bold text-sm uppercase text-slate-400 mb-4">Subscription</h4>
+                            <div class="flex items-center justify-between bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <div>
+                                    <span class="block font-bold text-slate-800">Enterprise Plan</span>
+                                    <span class="text-xs text-slate-500">Unlimited Screens • 4K Support</span>
+                                </div>
+                                <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">ACTIVE</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div style="margin-top:20px; text-align:right">
-                <button class="btn btn-outline" onclick="closeModal('playlist-modal')">Cancel</button>
-                <button class="btn btn-primary" onclick="savePlaylist()">Save Playlist</button>
+        </div>
+    </main>
+
+    <div id="modal-playlist" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center">
+        <div class="bg-white w-[90%] max-w-5xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold">Playlist Editor</h3>
+                <button onclick="closeModal('modal-playlist')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="flex-1 flex overflow-hidden">
+                <div class="w-1/3 border-r border-slate-200 flex flex-col bg-white">
+                    <div class="p-5 space-y-4 border-b border-slate-100">
+                        <input type="hidden" id="pl-id">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Name</label>
+                            <input type="text" id="pl-name" class="w-full p-2 border rounded text-sm focus:ring-2 ring-blue-500 outline-none" placeholder="Summer Campaign">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Start Date</label>
+                                <input type="datetime-local" id="pl-start" class="w-full p-2 border rounded text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">End Date</label>
+                                <input type="datetime-local" id="pl-end" class="w-full p-2 border rounded text-xs">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-4 bg-slate-50">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase mb-3">Available Media</h4>
+                        <div id="pl-source-list" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <div class="w-2/3 flex flex-col bg-slate-100">
+                    <div class="p-4 border-b border-slate-200 flex justify-between items-center">
+                        <span class="text-sm font-bold text-slate-600">Timeline Sequence</span>
+                        <span class="text-xs text-slate-400" id="pl-count">0 Items</span>
+                    </div>
+                    <div id="pl-target-list" class="flex-1 overflow-y-auto p-6 space-y-3">
+                        <div class="text-center text-slate-400 mt-20">
+                            <i class="fa-solid fa-arrow-left text-2xl mb-2"></i>
+                            <p>Select media from the left to add to timeline</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-200 bg-white flex justify-end gap-3">
+                <button onclick="closeModal('modal-playlist')" class="px-6 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 font-medium">Cancel</button>
+                <button onclick="savePlaylist()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-md">Save Playlist</button>
             </div>
         </div>
     </div>
 
-    <div id="upgrade-modal" class="modal-overlay">
-        <div class="modal" style="text-align:center">
-            <h1 style="font-size:3rem; margin:0">⚡</h1>
-            <h2>Upgrade to Pro</h2>
-            <p style="color:#64748b; line-height:1.6">You've reached the 3-screen limit.<br>Unlock unlimited screens, 4K support, and priority support.</p>
-            <div style="margin:30px 0; padding:20px; background:#f8fafc; border-radius:8px">
-                <h3 style="margin:0">$19 <span style="font-size:0.9rem; font-weight:normal">/ month</span></h3>
-            </div>
-            <button class="btn btn-primary" style="width:100%; padding:15px; justify-content:center" onclick="window.open('https://stripe.com', '_blank')">Continue to Payment</button>
-            <p style="font-size:0.8rem; color:#94a3b8; margin-top:15px">Secure payment via Stripe</p>
-            <button class="btn btn-outline" style="border:none" onclick="closeModal('upgrade-modal')">No thanks</button>
-        </div>
-    </div>
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
 
     <script>
         // --- CONFIGURATION ---
-        const YOUR_SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
-        const YOUR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4'; // PASTE KEY HERE
-        const sb = supabase.createClient(YOUR_SUPABASE_URL, YOUR_SUPABASE_KEY);
+        const SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // State
-        let currentUser = null;
-        let isSignUp = false;
-        let mediaCache = [];
-        let playlistCache = [];
-        let currentPlaylistItems = [];
+        // --- STATE ---
+        let state = {
+            user: null,
+            media: [],
+            playlists: [],
+            devices: [],
+            playlistDraft: []
+        };
 
-        // --- AUTH ---
-        sb.auth.onAuthStateChange((event, session) => {
-            if (session) { currentUser = session.user; initApp(); }
+        // --- AUTH LOGIC ---
+        sb.auth.onAuthStateChange(async (event, session) => {
+            if (session) {
+                state.user = session.user;
+                document.getElementById('auth-view').classList.add('hidden');
+                document.getElementById('sidebar').classList.remove('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                document.getElementById('sidebar').classList.add('flex');
+                
+                // Set Profile Data
+                document.getElementById('user-email').innerText = state.user.email;
+                document.getElementById('user-name').innerText = state.user.user_metadata.full_name || 'Admin';
+                document.getElementById('user-avatar').innerText = (state.user.email[0]).toUpperCase();
+                
+                // Load Initial Data
+                nav('media');
+            } else {
+                document.getElementById('auth-view').classList.remove('hidden');
+                document.getElementById('sidebar').classList.add('hidden');
+                document.getElementById('main-content').classList.add('hidden');
+            }
         });
 
-        async function loginGoogle() {
+        async function signInGoogle() {
             await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
         }
 
-        async function handleEmailAuth() {
+        async function handleEmailAuth(e) {
+            e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            if(!email || !password) return alert("Fill all fields");
-            
-            const { error } = isSignUp 
-                ? await sb.auth.signUp({ email, password })
-                : await sb.auth.signInWithPassword({ email, password });
-            
-            if(error) alert(error.message);
-            else if(isSignUp) alert("Check email for confirmation!");
-        }
-
-        function toggleAuthMode() {
-            isSignUp = !isSignUp;
-            document.getElementById('auth-btn').innerText = isSignUp ? "Create Account" : "Login";
-            document.getElementById('toggle-auth').innerText = isSignUp ? "Back to Login" : "Create an account";
+            // Try sign in, if fails, try sign up (Simplified for MVP)
+            const { error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) {
+                const { error: upErr } = await sb.auth.signUp({ email, password });
+                if (upErr) showToast(upErr.message, 'error');
+                else showToast('Account created! Check email.', 'success');
+            }
         }
 
         async function logout() { await sb.auth.signOut(); location.reload(); }
 
-        // --- CORE APP ---
-        function initApp() {
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('dashboard').classList.add('visible');
-            loadMedia();
-            loadPlaylists();
-            loadScreens();
-            updateStats();
-        }
-
-        function nav(tab) {
-            document.querySelectorAll('main section').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`view-${tab}`).classList.remove('hidden');
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-        }
-
-        // --- MEDIA LOGIC ---
-        async function loadMedia() {
-            const { data } = await sb.from('media').select('*');
-            mediaCache = data || [];
-            renderMedia();
-        }
-
-        function renderMedia() {
-            document.getElementById('media-grid').innerHTML = mediaCache.map(m => `
-                <div class="card">
-                    <button onclick="deleteMedia(${m.id}, '${m.url}')" style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.5); color:white; border:none; border-radius:4px; cursor:pointer">&times;</button>
-                    <img src="${m.url}" class="card-img">
-                    <div class="card-body">
-                        <div class="card-title" title="${m.name}">${m.name}</div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function uploadMedia() {
-            const file = document.getElementById('file-upload').files[0];
-            if(!file) return;
-            const fileName = `${Date.now()}-${file.name.replace(/\s/g,'')}`;
+        // --- NAVIGATION ---
+        function nav(view) {
+            // Hide all views
+            ['media', 'playlists', 'devices', 'profile'].forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+            });
             
-            const { error: upErr } = await sb.storage.from('media').upload(fileName, file);
-            if(upErr) return alert(upErr.message);
+            // Show selected
+            document.getElementById(`view-${view}`).classList.remove('hidden');
             
-            const { data: { publicUrl } } = sb.storage.from('media').getPublicUrl(fileName);
-            await sb.from('media').insert({ user_id: currentUser.id, name: file.name, type: 'image', url: publicUrl });
-            loadMedia();
-        }
-
-        async function deleteMedia(id, url) {
-            if(!confirm("Delete this?")) return;
-            const fileName = url.split('/').pop();
-            await sb.storage.from('media').remove([fileName]);
-            await sb.from('media').delete().eq('id', id);
-            loadMedia();
-        }
-
-        // --- PLAYLIST LOGIC ---
-        async function loadPlaylists() {
-            const { data } = await sb.from('playlists').select('*');
-            playlistCache = data || [];
-            document.getElementById('playlist-list').innerHTML = playlistCache.map(p => `
-                <div class="card" style="padding:20px; display:flex; flex-direction:column; justify-content:space-between">
-                    <div>
-                        <h3 style="margin:0">${p.name}</h3>
-                        <p style="color:#64748b; font-size:0.9rem">${p.items.length} items</p>
-                    </div>
-                    <div class="card-actions">
-                        <button class="btn btn-outline btn-sm" onclick="editPlaylist(${p.id})">Edit</button>
-                        <button class="btn btn-danger btn-sm" onclick="deletePlaylist(${p.id})">Del</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function openPlaylistModal() {
-            document.getElementById('playlist-modal').classList.add('open');
-            document.getElementById('pl-id').value = '';
-            document.getElementById('pl-name').value = '';
-            currentPlaylistItems = [];
-            renderBuilder();
-        }
-
-        function editPlaylist(id) {
-            const pl = playlistCache.find(p => p.id === id);
-            document.getElementById('playlist-modal').classList.add('open');
-            document.getElementById('pl-id').value = pl.id;
-            document.getElementById('pl-name').value = pl.name;
-            currentPlaylistItems = pl.items || []; // Restore items
-            renderBuilder();
-        }
-
-        function renderBuilder() {
-            // Left Side: All Media
-            document.getElementById('pl-media-source').innerHTML = mediaCache.map(m => `
-                <div onclick="addToPlaylist(${m.id})" style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #eee; cursor:pointer; hover:bg-gray-100">
-                    <img src="${m.url}" style="width:40px; height:40px; object-fit:cover; border-radius:4px">
-                    <div style="font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100px">${m.name}</div>
-                    <span style="color:var(--primary); font-size:1.2rem">+</span>
-                </div>
-            `).join('');
-
-            // Right Side: Selected Items
-            const target = document.getElementById('pl-media-target');
-            if(currentPlaylistItems.length === 0) {
-                target.innerHTML = '<p style="color:#94a3b8; text-align:center; margin-top:50px">Empty Playlist</p>';
+            // Update Sidebar
+            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active', 'text-white', 'bg-slate-800'));
+            // In a real app we'd map ID to element more robustly
+            
+            // Update Header Action
+            const btn = document.getElementById('primary-action-btn');
+            const title = document.getElementById('page-title');
+            
+            if (view === 'media') {
+                title.innerText = 'Media Library';
+                btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i> Upload Media';
+                btn.onclick = () => document.getElementById('media-upload-input').click();
+                btn.classList.remove('hidden');
+                loadMedia();
+            } else if (view === 'playlists') {
+                title.innerText = 'Playlists';
+                btn.innerHTML = '<i class="fa-solid fa-plus mr-2"></i> Create Playlist';
+                btn.onclick = () => openPlaylistBuilder();
+                btn.classList.remove('hidden');
+                loadPlaylists();
+            } else if (view === 'devices') {
+                title.innerText = 'Device Management';
+                btn.innerHTML = '<i class="fa-solid fa-link mr-2"></i> Pair Screen';
+                btn.onclick = () => generateDeviceCode();
+                btn.classList.remove('hidden');
+                loadDevices();
             } else {
-                target.innerHTML = currentPlaylistItems.map((item, idx) => {
-                    const m = mediaCache.find(x => x.id === item.id);
-                    if(!m) return '';
-                    return `
-                    <div style="background:white; padding:10px; margin-bottom:8px; border-radius:6px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 2px rgba(0,0,0,0.05)">
-                        <span style="color:#cbd5e1; font-weight:bold">${idx+1}</span>
-                        <img src="${m.url}" style="width:40px; height:40px; object-fit:cover; border-radius:4px">
-                        <div style="flex:1; overflow:hidden">
-                            <div style="font-size:0.85rem; font-weight:500">${m.name}</div>
-                            <input type="number" value="${item.duration}" onchange="updateDuration(${idx}, this.value)" style="width:50px; padding:2px; font-size:0.8rem"> sec
-                        </div>
-                        <button onclick="removeFromPlaylist(${idx})" style="color:red; background:none; border:none; cursor:pointer">&times;</button>
-                    </div>
-                `}).join('');
+                title.innerText = 'My Profile';
+                btn.classList.add('hidden');
+                loadProfileData();
             }
         }
 
-        function addToPlaylist(mediaId) {
-            currentPlaylistItems.push({ id: mediaId, duration: 10 }); // Default 10s
-            renderBuilder();
+        // --- MEDIA FUNCTIONS ---
+        async function loadMedia() {
+            const { data } = await sb.from('media').select('*').order('id', {ascending: false});
+            state.media = data || [];
+            renderMediaGrid();
         }
 
-        function removeFromPlaylist(index) {
-            currentPlaylistItems.splice(index, 1);
-            renderBuilder();
+        function renderMediaGrid() {
+            const grid = document.getElementById('media-grid');
+            const empty = document.getElementById('media-empty');
+            grid.innerHTML = '';
+            
+            if (state.media.length === 0) {
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            state.media.forEach(m => {
+                const isImg = m.type.includes('image');
+                const html = `
+                    <div class="group relative bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
+                        <div class="aspect-video bg-slate-100 relative">
+                            ${isImg ? `<img src="${m.url}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-slate-400"><i class="fa-solid fa-file text-3xl"></i></div>`}
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                                <button onclick="window.open('${m.url}')" class="p-2 bg-white rounded-full hover:bg-blue-50 text-blue-600"><i class="fa-solid fa-eye"></i></button>
+                                <button onclick="deleteMedia(${m.id}, '${m.name}')" class="p-2 bg-white rounded-full hover:bg-red-50 text-red-600"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <p class="text-sm font-medium truncate text-slate-700" title="${m.name}">${m.name}</p>
+                            <p class="text-xs text-slate-400 mt-1">${new Date().toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += html;
+            });
         }
 
-        function updateDuration(index, val) {
-            currentPlaylistItems[index].duration = parseInt(val);
+        async function processUpload() {
+            const files = document.getElementById('media-upload-input').files;
+            if (!files.length) return;
+
+            showToast('Uploading...', 'info');
+            
+            for (let file of files) {
+                const fileName = `${Date.now()}-${file.name.replace(/\s/g, '')}`;
+                const { error: upErr } = await sb.storage.from('media').upload(fileName, file);
+                
+                if (upErr) {
+                    showToast(`Failed: ${file.name}`, 'error');
+                    continue;
+                }
+
+                const { data: { publicUrl } } = sb.storage.from('media').getPublicUrl(fileName);
+                await sb.from('media').insert({
+                    user_id: state.user.id,
+                    name: file.name,
+                    type: file.type.split('/')[0],
+                    url: publicUrl,
+                    duration: 10 // default
+                });
+            }
+            
+            showToast('Upload Complete', 'success');
+            loadMedia();
+        }
+
+        async function deleteMedia(id, name) {
+            if (!confirm('Delete this file permanently?')) return;
+            // In a real app, delete from Storage too. Here we just delete DB record for simplicity or both.
+            await sb.from('media').delete().eq('id', id);
+            loadMedia();
+            showToast('File deleted', 'success');
+        }
+
+        // --- PLAYLIST FUNCTIONS ---
+        async function loadPlaylists() {
+            const { data } = await sb.from('playlists').select('*').order('created_at', {ascending: false});
+            state.playlists = data || [];
+            
+            const container = document.getElementById('playlist-list');
+            container.innerHTML = state.playlists.map(p => `
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                            <i class="fa-solid fa-list-ul text-xl"></i>
+                        </div>
+                        <div class="relative group">
+                            <button class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-ellipsis-vertical px-2"></i></button>
+                            <div class="absolute right-0 mt-2 w-32 bg-white border rounded-lg shadow-lg hidden group-hover:block z-10">
+                                <button onclick="deletePlaylist(${p.id})" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-800 mb-1">${p.name}</h3>
+                    <p class="text-sm text-slate-500 mb-4">${p.items ? p.items.length : 0} items • ${p.schedule_start ? 'Scheduled' : 'Always Active'}</p>
+                    <button onclick="editPlaylist(${p.id})" class="mt-auto w-full py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition">
+                        Edit Content
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function openPlaylistBuilder(playlist = null) {
+            document.getElementById('modal-playlist').classList.remove('hidden');
+            
+            // Populate Source List (Left Side)
+            const sourceList = document.getElementById('pl-source-list');
+            sourceList.innerHTML = state.media.map(m => `
+                <div onclick="addToDraft(${m.id})" class="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition group">
+                    <img src="${m.url}" class="w-10 h-10 rounded object-cover bg-slate-200">
+                    <div class="flex-1 overflow-hidden">
+                        <p class="text-xs font-bold text-slate-700 truncate">${m.name}</p>
+                        <p class="text-[10px] text-slate-400">Image</p>
+                    </div>
+                    <i class="fa-solid fa-circle-plus text-blue-500 opacity-0 group-hover:opacity-100"></i>
+                </div>
+            `).join('');
+
+            // Init Draft
+            if (playlist) {
+                document.getElementById('pl-id').value = playlist.id;
+                document.getElementById('pl-name').value = playlist.name;
+                document.getElementById('pl-start').value = playlist.schedule_start ? playlist.schedule_start.slice(0,16) : '';
+                document.getElementById('pl-end').value = playlist.schedule_end ? playlist.schedule_end.slice(0,16) : '';
+                state.playlistDraft = playlist.items || [];
+            } else {
+                document.getElementById('pl-id').value = '';
+                document.getElementById('pl-name').value = '';
+                state.playlistDraft = [];
+            }
+            renderPlaylistDraft();
+        }
+
+        function editPlaylist(id) {
+            const pl = state.playlists.find(p => p.id === id);
+            openPlaylistBuilder(pl);
+        }
+
+        function addToDraft(mediaId) {
+            state.playlistDraft.push({ id: mediaId, duration: 10 });
+            renderPlaylistDraft();
+        }
+
+        function renderPlaylistDraft() {
+            const target = document.getElementById('pl-target-list');
+            document.getElementById('pl-count').innerText = `${state.playlistDraft.length} Items`;
+            
+            if (state.playlistDraft.length === 0) {
+                target.innerHTML = `<div class="text-center text-slate-400 mt-10"><p>Timeline is empty</p></div>`;
+                return;
+            }
+
+            target.innerHTML = state.playlistDraft.map((item, idx) => {
+                const media = state.media.find(m => m.id === item.id);
+                if (!media) return ''; 
+                return `
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4">
+                        <span class="text-xs font-bold text-slate-300 w-4">${idx+1}</span>
+                        <img src="${media.url}" class="w-12 h-12 rounded object-cover bg-slate-100">
+                        <div class="flex-1">
+                            <p class="text-sm font-bold text-slate-700 truncate">${media.name}</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <i class="fa-regular fa-clock text-xs text-slate-400"></i>
+                                <input type="number" value="${item.duration}" onchange="updateDraftDuration(${idx}, this.value)" class="w-16 p-1 text-xs border rounded text-center">
+                                <span class="text-xs text-slate-400">sec</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <button onclick="moveItem(${idx}, -1)" class="text-slate-400 hover:text-blue-500"><i class="fa-solid fa-chevron-up"></i></button>
+                            <button onclick="moveItem(${idx}, 1)" class="text-slate-400 hover:text-blue-500"><i class="fa-solid fa-chevron-down"></i></button>
+                        </div>
+                        <button onclick="removeFromDraft(${idx})" class="text-red-400 hover:text-red-600 ml-2"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateDraftDuration(idx, val) { state.playlistDraft[idx].duration = parseInt(val); }
+        function removeFromDraft(idx) { state.playlistDraft.splice(idx, 1); renderPlaylistDraft(); }
+        function moveItem(idx, dir) {
+            if (idx + dir < 0 || idx + dir >= state.playlistDraft.length) return;
+            const temp = state.playlistDraft[idx];
+            state.playlistDraft[idx] = state.playlistDraft[idx+dir];
+            state.playlistDraft[idx+dir] = temp;
+            renderPlaylistDraft();
         }
 
         async function savePlaylist() {
-            const id = document.getElementById('pl-id').value;
             const name = document.getElementById('pl-name').value;
-            if(!name) return alert("Enter name");
+            const start = document.getElementById('pl-start').value || null;
+            const end = document.getElementById('pl-end').value || null;
+            const id = document.getElementById('pl-id').value;
 
-            const payload = { 
-                user_id: currentUser.id, 
-                name: name, 
-                items: currentPlaylistItems // This saves the JSON structure
+            if (!name) return showToast('Name required', 'error');
+
+            const payload = {
+                user_id: state.user.id,
+                name,
+                schedule_start: start,
+                schedule_end: end,
+                items: state.playlistDraft
             };
 
-            if(id) await sb.from('playlists').update(payload).eq('id', id);
+            if (id) await sb.from('playlists').update(payload).eq('id', id);
             else await sb.from('playlists').insert(payload);
 
-            closeModal('playlist-modal');
+            closeModal('modal-playlist');
+            showToast('Playlist Saved', 'success');
             loadPlaylists();
         }
 
         async function deletePlaylist(id) {
-            if(confirm("Delete Playlist?")) {
+            if (confirm("Delete this playlist?")) {
                 await sb.from('playlists').delete().eq('id', id);
                 loadPlaylists();
             }
         }
 
-        // --- SCREENS LOGIC ---
-        async function loadScreens() {
-            const { data } = await sb.from('devices').select('*');
-            document.getElementById('screen-list').innerHTML = data.map(d => `
-                <div class="card" style="padding:20px">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px">
-                        <span class="badge ${d.status==='online'?'badge-online':'badge-offline'}">${d.status}</span>
-                        <button onclick="deleteScreen(${d.id})" style="color:#ef4444; background:none; border:none; cursor:pointer">Unlink</button>
+        // --- DEVICE FUNCTIONS ---
+        async function loadDevices() {
+            const { data } = await sb.from('devices').select('*').order('last_seen', {ascending: false});
+            state.devices = data || [];
+            
+            // Stats
+            const now = new Date();
+            const online = state.devices.filter(d => (now - new Date(d.last_seen)) < 60000).length; // < 1 min
+            
+            document.getElementById('stat-total').innerText = state.devices.length;
+            document.getElementById('stat-online').innerText = online;
+            document.getElementById('stat-offline').innerText = state.devices.length - online;
+
+            const list = document.getElementById('device-list');
+            list.innerHTML = state.devices.map(d => {
+                const isOnline = (now - new Date(d.last_seen)) < 60000;
+                return `
+                <div class="bg-white p-4 rounded-lg border border-slate-200 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="w-3 h-3 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-400'}"></div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-bold text-slate-800">${d.name}</h4>
+                                <span class="text-xs font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-500">${d.code}</span>
+                            </div>
+                            <p class="text-xs text-slate-400">Last seen: ${isOnline ? 'Just now' : new Date(d.last_seen).toLocaleString()}</p>
+                        </div>
                     </div>
-                    <h2 style="font-family:monospace; font-size:2rem; margin:10px 0; letter-spacing:2px; text-align:center; background:#f1f5f9; padding:10px; border-radius:8px">${d.code}</h2>
-                    <h4 style="margin:0 0 10px 0">${d.name}</h4>
-                    
-                    <label style="font-size:0.8rem; color:#64748b">Playing:</label>
-                    <select style="width:100%; padding:8px; margin-top:5px; border-radius:4px; border:1px solid #cbd5e1" onchange="assignPlaylist(${d.id}, this.value)">
-                        <option value="">-- No Content --</option>
-                        ${playlistCache.map(p => `<option value="${p.id}" ${d.playlist_id==p.id?'selected':''}>${p.name}</option>`).join('')}
-                    </select>
+                    <div class="flex items-center gap-4">
+                        <select onchange="assignPlaylist(${d.id}, this.value)" class="text-sm border-slate-200 rounded-lg focus:ring-blue-500">
+                            <option value="">-- No Content --</option>
+                            ${state.playlists.map(p => `<option value="${p.id}" ${d.playlist_id === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                        </select>
+                        <button onclick="deleteDevice(${d.id})" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
+                    </div>
                 </div>
-            `).join('');
-            updateStats(data.length);
+            `}).join('');
         }
 
-        async function addScreen() {
-            // Check Limit
-            const { count } = await sb.from('devices').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
-            const { data: profile } = await sb.from('profiles').select('screen_limit').eq('id', currentUser.id).single();
-            const limit = profile ? profile.screen_limit : 3;
-
-            if(count >= limit) {
-                showUpgrade();
-                return;
-            }
-
+        async function generateDeviceCode() {
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-            await sb.from('devices').insert({ user_id: currentUser.id, code, name: 'New Screen', status: 'offline' });
-            loadScreens();
+            await sb.from('devices').insert({ user_id: state.user.id, code, name: 'New Screen', status: 'offline' });
+            showToast(`Code Generated: ${code}`, 'success');
+            loadDevices();
         }
 
-        async function assignPlaylist(deviceId, playlistId) {
-            await sb.from('devices').update({ playlist_id: playlistId || null }).eq('id', deviceId);
+        async function assignPlaylist(devId, plId) {
+            await sb.from('devices').update({ playlist_id: plId || null }).eq('id', devId);
+            showToast('Playlist Assigned', 'success');
         }
 
-        async function deleteScreen(id) {
-            if(confirm("Unlink screen?")) {
+        async function deleteDevice(id) {
+            if (confirm("Unlink this screen?")) {
                 await sb.from('devices').delete().eq('id', id);
-                loadScreens();
+                loadDevices();
             }
+        }
+
+        // --- PROFILE ---
+        async function loadProfileData() {
+            // In a real app, fetch from 'profiles' table. Here we use Auth Metadata + Mock.
+            const user = state.user;
+            document.getElementById('profile-name').innerText = user.user_metadata.full_name || 'Admin User';
+            document.getElementById('profile-email').innerText = user.email;
+            document.getElementById('profile-img').src = user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=${user.email}`;
         }
 
         // --- UTILS ---
-        async function updateStats(currentCount) {
-            if(!currentCount) {
-                const { count } = await sb.from('devices').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
-                currentCount = count;
-            }
-            const { data: profile } = await sb.from('profiles').select('screen_limit').eq('id', currentUser.id).single();
-            const limit = profile ? profile.screen_limit : 3;
-            
-            document.getElementById('limit-text').innerText = `${currentCount} / ${limit}`;
-            document.getElementById('limit-bar').style.width = `${(currentCount/limit)*100}%`;
+        function showToast(msg, type = 'info') {
+            const colors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-slate-800' };
+            const toast = document.createElement('div');
+            toast.className = `toast ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-${type === 'success' ? 'check' : 'info'}"></i> <span>${msg}</span>`;
+            document.getElementById('toast-container').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
 
-        function showUpgrade() { document.getElementById('upgrade-modal').classList.add('open'); }
-        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
     </script>
 </body>
 </html>
