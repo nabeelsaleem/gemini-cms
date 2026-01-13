@@ -3,617 +3,519 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SimpliSign Enterprise CMS</title>
+    <title>SimpliSign Enterprise</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .sidebar-link { transition: all 0.2s; }
-        .sidebar-link:hover, .sidebar-link.active { background-color: #1e293b; border-right: 4px solid #3b82f6; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .sidebar-link { transition: all 0.2s; border-left: 3px solid transparent; }
+        .sidebar-link:hover, .sidebar-link.active { background-color: #1e293b; border-left-color: #3b82f6; }
+        .sidebar-link.active i { color: #3b82f6; }
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Toast Animation */
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .toast { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
 <body class="text-slate-800 h-screen overflow-hidden flex">
 
-    <div id="auth-view" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-content-center hidden">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md mx-auto text-center">
-            <div class="mb-6">
-                <i class="fa-solid fa-tv text-4xl text-blue-600"></i>
-                <h1 class="text-2xl font-bold mt-2 text-slate-800">SimpliSign Workspace</h1>
-                <p class="text-slate-500">Enterprise Digital Signage</p>
-            </div>
-            
-            <button onclick="signInGoogle()" class="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-3 px-4 rounded-lg transition-all mb-4">
-                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5">
-                Sign in with Google
+    <div id="auth-view" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+            <h1 class="text-2xl font-bold mb-2 text-slate-800">SimpliSign Workspace</h1>
+            <button onclick="signInGoogle()" class="w-full flex justify-center gap-3 bg-white border hover:bg-slate-50 border-slate-300 text-slate-700 font-semibold py-3 rounded-lg mb-6 mt-6 transition-all">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5"> Sign in with Google
             </button>
-
-            <div class="relative my-6">
-                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
-                <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-slate-500">Or continue with email</span></div>
+            <div class="border-t pt-4">
+                <input type="email" id="email" placeholder="Email" class="w-full p-3 border rounded-lg mb-3">
+                <input type="password" id="password" placeholder="Password" class="w-full p-3 border rounded-lg mb-4">
+                <button onclick="handleEmailAuth()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">Login / Join</button>
             </div>
-
-            <form onsubmit="handleEmailAuth(event)" class="space-y-4">
-                <input type="email" id="email" placeholder="name@company.com" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
-                <input type="password" id="password" placeholder="Password" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all">
-                    Sign In / Register
-                </button>
-            </form>
         </div>
     </div>
 
-    <aside id="sidebar" class="w-64 bg-slate-900 text-white flex-col hidden md:flex">
-        <div class="p-6 border-b border-slate-800 flex items-center gap-3">
-            <i class="fa-solid fa-tv text-blue-500 text-xl"></i>
-            <span class="font-bold text-lg tracking-tight">SimpliSign</span>
+    <aside id="sidebar" class="w-64 bg-slate-900 text-white flex-col hidden md:flex shrink-0 transition-all">
+        <div class="p-6 border-b border-slate-800 font-bold text-xl tracking-tight flex items-center gap-2">
+            <i class="fa-solid fa-tv text-blue-500"></i> SimpliSign
         </div>
-        
         <nav class="flex-1 py-6 space-y-1">
-            <button onclick="nav('media')" class="sidebar-link active w-full text-left px-6 py-3 flex items-center gap-3 text-slate-300 hover:text-white">
-                <i class="fa-regular fa-images w-5"></i> Media Library
-            </button>
-            <button onclick="nav('playlists')" class="sidebar-link w-full text-left px-6 py-3 flex items-center gap-3 text-slate-300 hover:text-white">
-                <i class="fa-solid fa-layer-group w-5"></i> Playlists
-            </button>
-            <button onclick="nav('devices')" class="sidebar-link w-full text-left px-6 py-3 flex items-center gap-3 text-slate-300 hover:text-white">
-                <i class="fa-solid fa-desktop w-5"></i> Devices
-            </button>
-            <button onclick="nav('profile')" class="sidebar-link w-full text-left px-6 py-3 flex items-center gap-3 text-slate-300 hover:text-white">
-                <i class="fa-solid fa-user-gear w-5"></i> Profile
-            </button>
+            <button onclick="nav('media')" class="sidebar-link w-full text-left px-6 py-3 text-slate-300 hover:text-white flex items-center gap-3"><i class="fa-regular fa-images w-5"></i> Media</button>
+            <button onclick="nav('playlists')" class="sidebar-link w-full text-left px-6 py-3 text-slate-300 hover:text-white flex items-center gap-3"><i class="fa-solid fa-layer-group w-5"></i> Playlists</button>
+            <button onclick="nav('schedules')" class="sidebar-link w-full text-left px-6 py-3 text-slate-300 hover:text-white flex items-center gap-3"><i class="fa-regular fa-calendar-check w-5"></i> Schedules <span class="text-[10px] bg-blue-600 px-1.5 rounded ml-auto">NEW</span></button>
+            <button onclick="nav('devices')" class="sidebar-link w-full text-left px-6 py-3 text-slate-300 hover:text-white flex items-center gap-3"><i class="fa-solid fa-desktop w-5"></i> Screens</button>
         </nav>
-
         <div class="p-6 border-t border-slate-800">
             <div class="flex items-center gap-3 mb-4">
-                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold" id="user-avatar">U</div>
-                <div class="text-sm overflow-hidden">
-                    <p class="font-medium truncate" id="user-name">User</p>
-                    <p class="text-xs text-slate-500 truncate" id="user-email">email@test.com</p>
-                </div>
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center font-bold text-sm">U</div>
+                <div class="overflow-hidden"><p class="font-medium truncate text-sm" id="user-email">...</p></div>
             </div>
-            <button onclick="logout()" class="w-full text-xs text-red-400 hover:text-red-300 flex items-center gap-2">
-                <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
-            </button>
+            <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 flex items-center gap-2"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</button>
         </div>
     </aside>
 
     <main id="main-content" class="flex-1 flex flex-col h-screen overflow-hidden hidden">
-        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shadow-sm">
-            <h2 id="page-title" class="text-xl font-bold text-slate-800">Media Library</h2>
-            <div class="flex items-center gap-4">
-                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm shadow-blue-200" id="primary-action-btn">
-                    <i class="fa-solid fa-plus mr-2"></i> Upload Media
-                </button>
-            </div>
+        <header class="bg-white border-b h-16 flex items-center justify-between px-8 shadow-sm shrink-0">
+            <h2 id="page-title" class="text-xl font-bold text-slate-800">Overview</h2>
+            <div id="header-actions"></div>
         </header>
 
-        <div class="flex-1 overflow-auto p-6 relative">
+        <div class="flex-1 overflow-auto p-8 bg-slate-50 relative">
             
-            <div id="view-media" class="space-y-6">
-                <input type="file" id="media-upload-input" class="hidden" multiple onchange="processUpload()">
-                <div id="media-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                    </div>
-                <div id="media-empty" class="hidden flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-300 rounded-xl">
-                    <i class="fa-regular fa-image text-4xl mb-3"></i>
-                    <p>No media found. Upload something!</p>
+            <div id="view-media" class="hidden space-y-6">
+                <div class="flex gap-2">
+                    <button onclick="filterMedia('all')" class="px-4 py-1.5 rounded-full bg-slate-200 text-sm font-medium hover:bg-slate-300 focus:bg-blue-100 focus:text-blue-700">All</button>
+                    <button onclick="filterMedia('image')" class="px-4 py-1.5 rounded-full bg-slate-200 text-sm font-medium hover:bg-slate-300 focus:bg-blue-100 focus:text-blue-700">Images</button>
+                    <button onclick="filterMedia('video')" class="px-4 py-1.5 rounded-full bg-slate-200 text-sm font-medium hover:bg-slate-300 focus:bg-blue-100 focus:text-blue-700">Videos</button>
                 </div>
+                <input type="file" id="media-upload-input" class="hidden" multiple onchange="processUpload()">
+                <div id="media-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
             </div>
 
             <div id="view-playlists" class="hidden space-y-6">
                 <div id="playlist-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
             </div>
 
-            <div id="view-devices" class="hidden space-y-6">
-                <div id="device-stats" class="grid grid-cols-3 gap-4 mb-6">
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                        <span class="text-slate-500 text-sm font-medium">Total Screens</span>
-                        <div class="text-2xl font-bold" id="stat-total">0</div>
-                    </div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                        <span class="text-green-600 text-sm font-medium">Online</span>
-                        <div class="text-2xl font-bold text-green-700" id="stat-online">0</div>
-                    </div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                        <span class="text-red-500 text-sm font-medium">Offline</span>
-                        <div class="text-2xl font-bold text-red-700" id="stat-offline">0</div>
-                    </div>
+            <div id="view-schedules" class="hidden space-y-6">
+                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 mb-6">
+                    <i class="fa-solid fa-info-circle mr-2"></i> Schedules override the default playlist on a device during specific times.
                 </div>
+                <div id="schedule-list" class="space-y-3"></div>
+            </div>
+
+            <div id="view-devices" class="hidden space-y-6">
                 <div id="device-list" class="space-y-4"></div>
             </div>
-
-            <div id="view-profile" class="hidden max-w-2xl mx-auto">
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="h-32 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
-                    <div class="px-8 pb-8">
-                        <div class="relative -mt-12 mb-6">
-                            <div class="w-24 h-24 bg-white rounded-full p-1 shadow-lg">
-                                <img id="profile-img" src="https://ui-avatars.com/api/?name=User" class="w-full h-full rounded-full object-cover">
-                            </div>
-                        </div>
-                        <h3 class="text-2xl font-bold text-slate-800" id="profile-name">Loading...</h3>
-                        <p class="text-slate-500" id="profile-email">...</p>
-                        
-                        <div class="mt-8 border-t border-slate-100 pt-6">
-                            <h4 class="font-bold text-sm uppercase text-slate-400 mb-4">Subscription</h4>
-                            <div class="flex items-center justify-between bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                <div>
-                                    <span class="block font-bold text-slate-800">Enterprise Plan</span>
-                                    <span class="text-xs text-slate-500">Unlimited Screens • 4K Support</span>
-                                </div>
-                                <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">ACTIVE</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </main>
 
-    <div id="modal-playlist" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center">
-        <div class="bg-white w-[90%] max-w-5xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-            <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                <h3 class="text-lg font-bold">Playlist Editor</h3>
-                <button onclick="closeModal('modal-playlist')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+    <div id="modal-playlist" class="fixed inset-0 z-50 bg-black/60 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-[95%] max-w-5xl h-[85vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="p-4 border-b flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg">Playlist Editor</h3>
+                <button onclick="closeModal('modal-playlist')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-times text-xl"></i></button>
             </div>
-            
             <div class="flex-1 flex overflow-hidden">
-                <div class="w-1/3 border-r border-slate-200 flex flex-col bg-white">
-                    <div class="p-5 space-y-4 border-b border-slate-100">
+                <div class="w-1/3 border-r bg-white flex flex-col">
+                    <div class="p-4 border-b space-y-3">
                         <input type="hidden" id="pl-id">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Name</label>
-                            <input type="text" id="pl-name" class="w-full p-2 border rounded text-sm focus:ring-2 ring-blue-500 outline-none" placeholder="Summer Campaign">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Start Date</label>
-                                <input type="datetime-local" id="pl-start" class="w-full p-2 border rounded text-xs">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">End Date</label>
-                                <input type="datetime-local" id="pl-end" class="w-full p-2 border rounded text-xs">
-                            </div>
-                        </div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Playlist Name</label>
+                        <input type="text" id="pl-name" class="w-full p-2 border rounded focus:ring-2 ring-blue-500 outline-none" placeholder="Enter name...">
                     </div>
                     <div class="flex-1 overflow-y-auto p-4 bg-slate-50">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase mb-3">Available Media</h4>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase mb-3">Library</h4>
                         <div id="pl-source-list" class="space-y-2"></div>
                     </div>
                 </div>
-
-                <div class="w-2/3 flex flex-col bg-slate-100">
-                    <div class="p-4 border-b border-slate-200 flex justify-between items-center">
-                        <span class="text-sm font-bold text-slate-600">Timeline Sequence</span>
-                        <span class="text-xs text-slate-400" id="pl-count">0 Items</span>
-                    </div>
-                    <div id="pl-target-list" class="flex-1 overflow-y-auto p-6 space-y-3">
-                        <div class="text-center text-slate-400 mt-20">
-                            <i class="fa-solid fa-arrow-left text-2xl mb-2"></i>
-                            <p>Select media from the left to add to timeline</p>
-                        </div>
-                    </div>
+                <div class="w-2/3 bg-slate-100 flex flex-col">
+                    <div class="p-3 border-b flex justify-between text-sm font-bold text-slate-600"><span>Timeline</span><span id="pl-count">0 Items</span></div>
+                    <div id="pl-target-list" class="flex-1 overflow-y-auto p-6 space-y-2"></div>
                 </div>
             </div>
-
-            <div class="p-4 border-t border-slate-200 bg-white flex justify-end gap-3">
-                <button onclick="closeModal('modal-playlist')" class="px-6 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 font-medium">Cancel</button>
-                <button onclick="savePlaylist()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-md">Save Playlist</button>
+            <div class="p-4 border-t bg-white flex justify-end gap-3">
+                <button onclick="savePlaylist()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium shadow-sm" id="save-pl-btn">Save Playlist</button>
             </div>
         </div>
     </div>
 
-    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
+    <div id="modal-schedule" class="fixed inset-0 z-50 bg-black/60 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-xl shadow-2xl p-6">
+            <h3 class="font-bold text-lg mb-4">Add Schedule</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Device</label>
+                    <select id="sch-device" class="w-full p-2 border rounded"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Playlist to Run</label>
+                    <select id="sch-playlist" class="w-full p-2 border rounded"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Start Time</label>
+                        <input type="time" id="sch-start" class="w-full p-2 border rounded">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">End Time</label>
+                        <input type="time" id="sch-end" class="w-full p-2 border rounded">
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button onclick="closeModal('modal-schedule')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Cancel</button>
+                <button onclick="saveSchedule()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Schedule</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
 
     <script>
         // --- CONFIGURATION ---
-        const SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
+        const SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co '; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- STATE ---
-        let state = {
-            user: null,
-            media: [],
-            playlists: [],
-            devices: [],
-            playlistDraft: []
-        };
+        let state = { user: null, media: [], playlists: [], devices: [], schedules: [], draft: [] };
 
-        // --- AUTH LOGIC ---
-        sb.auth.onAuthStateChange(async (event, session) => {
+        // --- AUTH ---
+        sb.auth.onAuthStateChange((event, session) => {
             if (session) {
                 state.user = session.user;
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('sidebar').classList.remove('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
                 document.getElementById('sidebar').classList.add('flex');
-                
-                // Set Profile Data
                 document.getElementById('user-email').innerText = state.user.email;
-                document.getElementById('user-name').innerText = state.user.user_metadata.full_name || 'Admin';
-                document.getElementById('user-avatar').innerText = (state.user.email[0]).toUpperCase();
-                
-                // Load Initial Data
                 nav('media');
             } else {
                 document.getElementById('auth-view').classList.remove('hidden');
                 document.getElementById('sidebar').classList.add('hidden');
-                document.getElementById('main-content').classList.add('hidden');
             }
         });
 
-        async function signInGoogle() {
-            await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
-        }
-
-        async function handleEmailAuth(e) {
-            e.preventDefault();
+        async function signInGoogle() { await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
+        async function handleEmailAuth() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            // Try sign in, if fails, try sign up (Simplified for MVP)
             const { error } = await sb.auth.signInWithPassword({ email, password });
             if (error) {
                 const { error: upErr } = await sb.auth.signUp({ email, password });
-                if (upErr) showToast(upErr.message, 'error');
-                else showToast('Account created! Check email.', 'success');
+                if (upErr) showToast(upErr.message, 'error'); else showToast('Account created!', 'success');
             }
         }
-
         async function logout() { await sb.auth.signOut(); location.reload(); }
 
         // --- NAVIGATION ---
         function nav(view) {
-            // Hide all views
-            ['media', 'playlists', 'devices', 'profile'].forEach(v => {
-                document.getElementById(`view-${v}`).classList.add('hidden');
-            });
-            
-            // Show selected
+            ['media', 'playlists', 'devices', 'schedules'].forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
             document.getElementById(`view-${view}`).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active', 'bg-slate-800'));
             
-            // Update Sidebar
-            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active', 'text-white', 'bg-slate-800'));
-            // In a real app we'd map ID to element more robustly
-            
-            // Update Header Action
-            const btn = document.getElementById('primary-action-btn');
+            const btn = document.getElementById('header-actions');
             const title = document.getElementById('page-title');
             
             if (view === 'media') {
                 title.innerText = 'Media Library';
-                btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i> Upload Media';
-                btn.onclick = () => document.getElementById('media-upload-input').click();
-                btn.classList.remove('hidden');
+                btn.innerHTML = `<button onclick="document.getElementById('media-upload-input').click()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium text-sm">+ Upload</button>`;
                 loadMedia();
             } else if (view === 'playlists') {
                 title.innerText = 'Playlists';
-                btn.innerHTML = '<i class="fa-solid fa-plus mr-2"></i> Create Playlist';
-                btn.onclick = () => openPlaylistBuilder();
-                btn.classList.remove('hidden');
+                btn.innerHTML = `<button onclick="openPlaylistBuilder()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium text-sm">+ Create Playlist</button>`;
                 loadPlaylists();
-            } else if (view === 'devices') {
-                title.innerText = 'Device Management';
-                btn.innerHTML = '<i class="fa-solid fa-link mr-2"></i> Pair Screen';
-                btn.onclick = () => generateDeviceCode();
-                btn.classList.remove('hidden');
-                loadDevices();
+            } else if (view === 'schedules') {
+                title.innerText = 'Schedules';
+                btn.innerHTML = `<button onclick="openScheduleModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium text-sm">+ Add Schedule</button>`;
+                loadSchedules();
             } else {
-                title.innerText = 'My Profile';
-                btn.classList.add('hidden');
-                loadProfileData();
+                title.innerText = 'Connected Screens';
+                btn.innerHTML = `<button onclick="addDevice()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium text-sm">+ New Screen</button>`;
+                loadDevices();
             }
         }
 
-        // --- MEDIA FUNCTIONS ---
+        // --- MEDIA ---
         async function loadMedia() {
-            const { data } = await sb.from('media').select('*').order('id', {ascending: false});
+            const { data, error } = await sb.from('media').select('*').order('id', {ascending: false});
+            if(error) return showToast(error.message, 'error');
             state.media = data || [];
-            renderMediaGrid();
+            filterMedia('all');
         }
 
-        function renderMediaGrid() {
+        function filterMedia(type) {
             const grid = document.getElementById('media-grid');
-            const empty = document.getElementById('media-empty');
             grid.innerHTML = '';
+            const filtered = type === 'all' ? state.media : state.media.filter(m => m.type.includes(type));
             
-            if (state.media.length === 0) {
-                empty.classList.remove('hidden');
-                return;
-            }
-            empty.classList.add('hidden');
+            if (filtered.length === 0) return grid.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10">No media found.</p>`;
 
-            state.media.forEach(m => {
-                const isImg = m.type.includes('image');
-                const html = `
-                    <div class="group relative bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
+            filtered.forEach(m => {
+                grid.innerHTML += `
+                    <div class="group relative bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
                         <div class="aspect-video bg-slate-100 relative">
-                            ${isImg ? `<img src="${m.url}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-slate-400"><i class="fa-solid fa-file text-3xl"></i></div>`}
-                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                                <button onclick="window.open('${m.url}')" class="p-2 bg-white rounded-full hover:bg-blue-50 text-blue-600"><i class="fa-solid fa-eye"></i></button>
-                                <button onclick="deleteMedia(${m.id}, '${m.name}')" class="p-2 bg-white rounded-full hover:bg-red-50 text-red-600"><i class="fa-solid fa-trash"></i></button>
-                            </div>
+                            ${m.type.includes('image') ? `<img src="${m.url}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-slate-400"><i class="fa-solid fa-video text-3xl"></i></div>`}
+                            <button onclick="deleteMedia(${m.id})" class="absolute top-2 right-2 p-1.5 bg-white rounded-full text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-50 transition"><i class="fa-solid fa-trash text-xs"></i></button>
                         </div>
-                        <div class="p-3">
-                            <p class="text-sm font-medium truncate text-slate-700" title="${m.name}">${m.name}</p>
-                            <p class="text-xs text-slate-400 mt-1">${new Date().toLocaleDateString()}</p>
-                        </div>
-                    </div>
-                `;
-                grid.innerHTML += html;
+                        <div class="p-3"><p class="text-xs font-bold truncate text-slate-700" title="${m.name}">${m.name}</p></div>
+                    </div>`;
             });
         }
 
         async function processUpload() {
             const files = document.getElementById('media-upload-input').files;
-            if (!files.length) return;
-
+            if(!files.length) return;
             showToast('Uploading...', 'info');
-            
-            for (let file of files) {
-                const fileName = `${Date.now()}-${file.name.replace(/\s/g, '')}`;
-                const { error: upErr } = await sb.storage.from('media').upload(fileName, file);
-                
-                if (upErr) {
-                    showToast(`Failed: ${file.name}`, 'error');
-                    continue;
-                }
-
-                const { data: { publicUrl } } = sb.storage.from('media').getPublicUrl(fileName);
-                await sb.from('media').insert({
-                    user_id: state.user.id,
-                    name: file.name,
-                    type: file.type.split('/')[0],
-                    url: publicUrl,
-                    duration: 10 // default
-                });
+            for(let file of files) {
+                const name = `${Date.now()}-${file.name.replace(/\s/g,'')}`;
+                const { error } = await sb.storage.from('media').upload(name, file);
+                if(error) { showToast(`Upload failed: ${error.message}`, 'error'); continue; }
+                const { data } = sb.storage.from('media').getPublicUrl(name);
+                await sb.from('media').insert({ user_id: state.user.id, name: file.name, type: file.type, url: data.publicUrl });
             }
-            
             showToast('Upload Complete', 'success');
             loadMedia();
         }
 
-        async function deleteMedia(id, name) {
-            if (!confirm('Delete this file permanently?')) return;
-            // In a real app, delete from Storage too. Here we just delete DB record for simplicity or both.
-            await sb.from('media').delete().eq('id', id);
-            loadMedia();
-            showToast('File deleted', 'success');
+        async function deleteMedia(id) {
+            if(!confirm('Delete file?')) return;
+            const { error } = await sb.from('media').delete().eq('id', id);
+            if(error) showToast(error.message, 'error'); else { showToast('Deleted', 'success'); loadMedia(); }
         }
 
-        // --- PLAYLIST FUNCTIONS ---
+        // --- PLAYLISTS ---
         async function loadPlaylists() {
-            const { data } = await sb.from('playlists').select('*').order('created_at', {ascending: false});
+            const { data, error } = await sb.from('playlists').select('*').order('id', {ascending: false});
+            if(error) return showToast(error.message, 'error');
             state.playlists = data || [];
-            
-            const container = document.getElementById('playlist-list');
-            container.innerHTML = state.playlists.map(p => `
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
-                            <i class="fa-solid fa-list-ul text-xl"></i>
-                        </div>
-                        <div class="relative group">
-                            <button class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-ellipsis-vertical px-2"></i></button>
-                            <div class="absolute right-0 mt-2 w-32 bg-white border rounded-lg shadow-lg hidden group-hover:block z-10">
-                                <button onclick="deletePlaylist(${p.id})" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Delete</button>
+            document.getElementById('playlist-list').innerHTML = state.playlists.map(p => `
+                <div class="bg-white p-5 rounded-xl border shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-slate-800 text-lg">${p.name}</h3>
+                            <div class="flex gap-2">
+                                <button onclick="editPlaylistName(${p.id}, '${p.name}')" class="text-slate-400 hover:text-blue-500"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="deletePlaylist(${p.id})" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </div>
+                        <p class="text-sm text-slate-500">${p.items ? p.items.length : 0} items</p>
                     </div>
-                    <h3 class="font-bold text-lg text-slate-800 mb-1">${p.name}</h3>
-                    <p class="text-sm text-slate-500 mb-4">${p.items ? p.items.length : 0} items • ${p.schedule_start ? 'Scheduled' : 'Always Active'}</p>
-                    <button onclick="editPlaylist(${p.id})" class="mt-auto w-full py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition">
-                        Edit Content
-                    </button>
+                    <button onclick="editPlaylist(${p.id})" class="mt-4 w-full py-2 border rounded text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-600">Edit Content</button>
                 </div>
             `).join('');
         }
 
-        function openPlaylistBuilder(playlist = null) {
+        function openPlaylistBuilder(pl = null) {
             document.getElementById('modal-playlist').classList.remove('hidden');
-            
-            // Populate Source List (Left Side)
-            const sourceList = document.getElementById('pl-source-list');
-            sourceList.innerHTML = state.media.map(m => `
-                <div onclick="addToDraft(${m.id})" class="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition group">
+            document.getElementById('pl-source-list').innerHTML = state.media.map(m => `
+                <div onclick="addToDraft(${m.id})" class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded cursor-pointer border border-transparent hover:border-blue-200 transition">
                     <img src="${m.url}" class="w-10 h-10 rounded object-cover bg-slate-200">
-                    <div class="flex-1 overflow-hidden">
-                        <p class="text-xs font-bold text-slate-700 truncate">${m.name}</p>
-                        <p class="text-[10px] text-slate-400">Image</p>
-                    </div>
-                    <i class="fa-solid fa-circle-plus text-blue-500 opacity-0 group-hover:opacity-100"></i>
-                </div>
-            `).join('');
-
-            // Init Draft
-            if (playlist) {
-                document.getElementById('pl-id').value = playlist.id;
-                document.getElementById('pl-name').value = playlist.name;
-                document.getElementById('pl-start').value = playlist.schedule_start ? playlist.schedule_start.slice(0,16) : '';
-                document.getElementById('pl-end').value = playlist.schedule_end ? playlist.schedule_end.slice(0,16) : '';
-                state.playlistDraft = playlist.items || [];
+                    <div class="flex-1 overflow-hidden"><p class="text-xs font-bold truncate">${m.name}</p></div>
+                    <i class="fa-solid fa-plus text-blue-500"></i>
+                </div>`).join('');
+            
+            if(pl) {
+                document.getElementById('pl-id').value = pl.id;
+                document.getElementById('pl-name').value = pl.name;
+                state.draft = pl.items || [];
             } else {
                 document.getElementById('pl-id').value = '';
                 document.getElementById('pl-name').value = '';
-                state.playlistDraft = [];
+                state.draft = [];
             }
-            renderPlaylistDraft();
+            renderDraft();
         }
 
-        function editPlaylist(id) {
-            const pl = state.playlists.find(p => p.id === id);
-            openPlaylistBuilder(pl);
-        }
-
-        function addToDraft(mediaId) {
-            state.playlistDraft.push({ id: mediaId, duration: 10 });
-            renderPlaylistDraft();
-        }
-
-        function renderPlaylistDraft() {
-            const target = document.getElementById('pl-target-list');
-            document.getElementById('pl-count').innerText = `${state.playlistDraft.length} Items`;
+        function editPlaylist(id) { openPlaylistBuilder(state.playlists.find(p => p.id === id)); }
+        function addToDraft(id) { state.draft.push({ id, duration: 10 }); renderDraft(); }
+        
+        function renderDraft() {
+            const list = document.getElementById('pl-target-list');
+            document.getElementById('pl-count').innerText = `${state.draft.length} Items`;
+            if(!state.draft.length) return list.innerHTML = `<p class="text-center text-slate-400 mt-10">Empty Timeline</p>`;
             
-            if (state.playlistDraft.length === 0) {
-                target.innerHTML = `<div class="text-center text-slate-400 mt-10"><p>Timeline is empty</p></div>`;
-                return;
-            }
-
-            target.innerHTML = state.playlistDraft.map((item, idx) => {
-                const media = state.media.find(m => m.id === item.id);
-                if (!media) return ''; 
+            list.innerHTML = state.draft.map((item, i) => {
+                const m = state.media.find(x => x.id === item.id);
+                if(!m) return '';
                 return `
-                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4">
-                        <span class="text-xs font-bold text-slate-300 w-4">${idx+1}</span>
-                        <img src="${media.url}" class="w-12 h-12 rounded object-cover bg-slate-100">
-                        <div class="flex-1">
-                            <p class="text-sm font-bold text-slate-700 truncate">${media.name}</p>
-                            <div class="flex items-center gap-2 mt-1">
-                                <i class="fa-regular fa-clock text-xs text-slate-400"></i>
-                                <input type="number" value="${item.duration}" onchange="updateDraftDuration(${idx}, this.value)" class="w-16 p-1 text-xs border rounded text-center">
-                                <span class="text-xs text-slate-400">sec</span>
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <button onclick="moveItem(${idx}, -1)" class="text-slate-400 hover:text-blue-500"><i class="fa-solid fa-chevron-up"></i></button>
-                            <button onclick="moveItem(${idx}, 1)" class="text-slate-400 hover:text-blue-500"><i class="fa-solid fa-chevron-down"></i></button>
-                        </div>
-                        <button onclick="removeFromDraft(${idx})" class="text-red-400 hover:text-red-600 ml-2"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                `;
+                <div class="bg-white p-3 rounded border flex items-center gap-3">
+                    <span class="text-xs font-bold text-slate-300">${i+1}</span>
+                    <img src="${m.url}" class="w-10 h-10 rounded object-cover bg-slate-100">
+                    <div class="flex-1 overflow-hidden"><p class="text-xs font-bold truncate">${m.name}</p></div>
+                    <input type="number" value="${item.duration}" onchange="state.draft[${i}].duration=parseInt(this.value)" class="w-14 p-1 text-xs border rounded text-center">
+                    <span class="text-xs text-slate-400">s</span>
+                    <button onclick="state.draft.splice(${i},1); renderDraft()" class="text-red-400 hover:text-red-600 px-2"><i class="fa-solid fa-trash"></i></button>
+                </div>`;
             }).join('');
         }
 
-        function updateDraftDuration(idx, val) { state.playlistDraft[idx].duration = parseInt(val); }
-        function removeFromDraft(idx) { state.playlistDraft.splice(idx, 1); renderPlaylistDraft(); }
-        function moveItem(idx, dir) {
-            if (idx + dir < 0 || idx + dir >= state.playlistDraft.length) return;
-            const temp = state.playlistDraft[idx];
-            state.playlistDraft[idx] = state.playlistDraft[idx+dir];
-            state.playlistDraft[idx+dir] = temp;
-            renderPlaylistDraft();
-        }
-
         async function savePlaylist() {
+            const btn = document.getElementById('save-pl-btn');
+            btn.innerText = 'Saving...'; btn.disabled = true;
+            
             const name = document.getElementById('pl-name').value;
-            const start = document.getElementById('pl-start').value || null;
-            const end = document.getElementById('pl-end').value || null;
             const id = document.getElementById('pl-id').value;
+            if(!name) { btn.innerText = 'Save Playlist'; btn.disabled = false; return showToast('Name required', 'error'); }
 
-            if (!name) return showToast('Name required', 'error');
+            const payload = { user_id: state.user.id, name, items: state.draft };
+            
+            // ERROR HANDLING FIXED HERE
+            let error;
+            if(id) {
+                const res = await sb.from('playlists').update(payload).eq('id', id);
+                error = res.error;
+            } else {
+                const res = await sb.from('playlists').insert(payload);
+                error = res.error;
+            }
 
-            const payload = {
-                user_id: state.user.id,
-                name,
-                schedule_start: start,
-                schedule_end: end,
-                items: state.playlistDraft
-            };
+            btn.innerText = 'Save Playlist'; btn.disabled = false;
 
-            if (id) await sb.from('playlists').update(payload).eq('id', id);
-            else await sb.from('playlists').insert(payload);
-
-            closeModal('modal-playlist');
-            showToast('Playlist Saved', 'success');
-            loadPlaylists();
-        }
-
-        async function deletePlaylist(id) {
-            if (confirm("Delete this playlist?")) {
-                await sb.from('playlists').delete().eq('id', id);
+            if(error) {
+                console.error(error); // Log to console for debugging
+                showToast(`Save Failed: ${error.message}`, 'error');
+            } else {
+                showToast('Playlist Saved Successfully', 'success');
+                closeModal('modal-playlist');
                 loadPlaylists();
             }
         }
 
-        // --- DEVICE FUNCTIONS ---
-        async function loadDevices() {
-            const { data } = await sb.from('devices').select('*').order('last_seen', {ascending: false});
-            state.devices = data || [];
-            
-            // Stats
-            const now = new Date();
-            const online = state.devices.filter(d => (now - new Date(d.last_seen)) < 60000).length; // < 1 min
-            
-            document.getElementById('stat-total').innerText = state.devices.length;
-            document.getElementById('stat-online').innerText = online;
-            document.getElementById('stat-offline').innerText = state.devices.length - online;
-
-            const list = document.getElementById('device-list');
-            list.innerHTML = state.devices.map(d => {
-                const isOnline = (now - new Date(d.last_seen)) < 60000;
-                return `
-                <div class="bg-white p-4 rounded-lg border border-slate-200 flex items-center justify-between shadow-sm">
-                    <div class="flex items-center gap-4">
-                        <div class="w-3 h-3 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-400'}"></div>
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <h4 class="font-bold text-slate-800">${d.name}</h4>
-                                <span class="text-xs font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-500">${d.code}</span>
-                            </div>
-                            <p class="text-xs text-slate-400">Last seen: ${isOnline ? 'Just now' : new Date(d.last_seen).toLocaleString()}</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <select onchange="assignPlaylist(${d.id}, this.value)" class="text-sm border-slate-200 rounded-lg focus:ring-blue-500">
-                            <option value="">-- No Content --</option>
-                            ${state.playlists.map(p => `<option value="${p.id}" ${d.playlist_id === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                        </select>
-                        <button onclick="deleteDevice(${d.id})" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
-            `}).join('');
-        }
-
-        async function generateDeviceCode() {
-            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-            await sb.from('devices').insert({ user_id: state.user.id, code, name: 'New Screen', status: 'offline' });
-            showToast(`Code Generated: ${code}`, 'success');
-            loadDevices();
-        }
-
-        async function assignPlaylist(devId, plId) {
-            await sb.from('devices').update({ playlist_id: plId || null }).eq('id', devId);
-            showToast('Playlist Assigned', 'success');
-        }
-
-        async function deleteDevice(id) {
-            if (confirm("Unlink this screen?")) {
-                await sb.from('devices').delete().eq('id', id);
-                loadDevices();
+        async function editPlaylistName(id, oldName) {
+            const newName = prompt("Enter new name:", oldName);
+            if(newName && newName !== oldName) {
+                const { error } = await sb.from('playlists').update({name: newName}).eq('id', id);
+                if(error) showToast(error.message, 'error'); else { showToast('Renamed', 'success'); loadPlaylists(); }
             }
         }
 
-        // --- PROFILE ---
-        async function loadProfileData() {
-            // In a real app, fetch from 'profiles' table. Here we use Auth Metadata + Mock.
-            const user = state.user;
-            document.getElementById('profile-name').innerText = user.user_metadata.full_name || 'Admin User';
-            document.getElementById('profile-email').innerText = user.email;
-            document.getElementById('profile-img').src = user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=${user.email}`;
+        async function deletePlaylist(id) {
+            if(confirm("Delete playlist?")) {
+                const { error } = await sb.from('playlists').delete().eq('id', id);
+                if(error) showToast(error.message, 'error'); else { showToast('Deleted', 'success'); loadPlaylists(); }
+            }
+        }
+
+        // --- SCHEDULES (NEW) ---
+        async function loadSchedules() {
+            // Fetch schedules with device name and playlist name via Join is hard in plain JS
+            // So we fetch schedules then find matches in state.
+            const { data, error } = await sb.from('schedules').select('*');
+            if(error) return showToast(error.message, 'error');
+            state.schedules = data || [];
+            
+            const list = document.getElementById('schedule-list');
+            if(!state.schedules.length) return list.innerHTML = `<p class="text-center text-slate-400 mt-10">No schedules set.</p>`;
+
+            // Ensure we have devices/playlists loaded for names
+            if(!state.devices.length) await loadDevices();
+            if(!state.playlists.length) await loadPlaylists();
+
+            list.innerHTML = state.schedules.map(s => {
+                const dev = state.devices.find(d => d.id === s.device_id);
+                const pl = state.playlists.find(p => p.id === s.playlist_id);
+                return `
+                <div class="bg-white p-4 rounded-lg border flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-bold text-slate-800">${dev ? dev.name : 'Unknown Device'}</span>
+                            <i class="fa-solid fa-arrow-right text-slate-300 text-xs"></i>
+                            <span class="font-bold text-blue-600">${pl ? pl.name : 'Unknown Playlist'}</span>
+                        </div>
+                        <div class="text-xs text-slate-500 font-mono bg-slate-100 inline-block px-2 py-1 rounded">
+                            <i class="fa-regular fa-clock mr-1"></i> ${s.start_time} - ${s.end_time}
+                        </div>
+                    </div>
+                    <button onclick="deleteSchedule(${s.id})" class="text-slate-400 hover:text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
+                </div>`;
+            }).join('');
+        }
+
+        function openScheduleModal() {
+            document.getElementById('modal-schedule').classList.remove('hidden');
+            // Populate dropdowns
+            document.getElementById('sch-device').innerHTML = state.devices.map(d => `<option value="${d.id}">${d.name} (${d.code})</option>`).join('');
+            document.getElementById('sch-playlist').innerHTML = state.playlists.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        }
+
+        async function saveSchedule() {
+            const device_id = document.getElementById('sch-device').value;
+            const playlist_id = document.getElementById('sch-playlist').value;
+            const start_time = document.getElementById('sch-start').value;
+            const end_time = document.getElementById('sch-end').value;
+
+            if(!start_time || !end_time) return showToast('Times required', 'error');
+
+            const { error } = await sb.from('schedules').insert({
+                user_id: state.user.id,
+                device_id, playlist_id, start_time, end_time
+            });
+
+            if(error) showToast(error.message, 'error'); 
+            else { showToast('Schedule Created', 'success'); closeModal('modal-schedule'); loadSchedules(); }
+        }
+
+        async function deleteSchedule(id) {
+            if(confirm("Delete schedule?")) {
+                const { error } = await sb.from('schedules').delete().eq('id', id);
+                if(error) showToast(error.message, 'error'); else { showToast('Deleted', 'success'); loadSchedules(); }
+            }
+        }
+
+
+        // --- DEVICES ---
+        async function loadDevices() {
+            const { data, error } = await sb.from('devices').select('*').order('id', {ascending: false});
+            if(error) return showToast(error.message, 'error');
+            state.devices = data || [];
+            
+            // Ensure playlists loaded for dropdown
+            if(state.playlists.length === 0) {
+                 const { data: pl } = await sb.from('playlists').select('*');
+                 state.playlists = pl || [];
+            }
+
+            document.getElementById('device-list').innerHTML = state.devices.map(d => `
+                <div class="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 font-mono text-xs font-bold border">${d.code}</div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-bold text-slate-800">${d.name}</h4>
+                                <button onclick="renameDevice(${d.id}, '${d.name}')" class="text-slate-300 hover:text-blue-500 text-xs"><i class="fa-solid fa-pen"></i></button>
+                            </div>
+                            <span class="text-xs ${d.status==='online'?'text-green-600':'text-red-500'} font-bold uppercase tracking-wider">${d.status}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="text-right mr-4">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase">Default Playlist</label>
+                            <select onchange="assignPlaylist(${d.id}, this.value)" class="text-sm border-none bg-transparent font-medium text-blue-600 focus:ring-0 cursor-pointer">
+                                <option value="">None</option>
+                                ${state.playlists.map(p => `<option value="${p.id}" ${d.playlist_id === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <button onclick="deleteDevice(${d.id})" class="text-slate-400 hover:text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addDevice() {
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const { error } = await sb.from('devices').insert({ user_id: state.user.id, code, name: 'New Screen' });
+            if(error) showToast(error.message, 'error'); else { showToast(`Code: ${code}`, 'success'); loadDevices(); }
+        }
+
+        async function assignPlaylist(devId, plId) {
+            const { error } = await sb.from('devices').update({ playlist_id: plId || null }).eq('id', devId);
+            if(error) showToast(error.message, 'error'); else showToast('Default Playlist Updated', 'success');
+        }
+
+        async function renameDevice(id, oldName) {
+            const newName = prompt("New Device Name:", oldName);
+            if(newName && newName !== oldName) {
+                const { error } = await sb.from('devices').update({name: newName}).eq('id', id);
+                if(error) showToast(error.message, 'error'); else { showToast('Renamed', 'success'); loadDevices(); }
+            }
+        }
+        
+        async function deleteDevice(id) {
+             if(confirm('Unlink screen?')) {
+                 const { error } = await sb.from('devices').delete().eq('id', id);
+                 if(error) showToast(error.message, 'error'); else { showToast('Unlinked', 'success'); loadDevices(); }
+             }
         }
 
         // --- UTILS ---
         function showToast(msg, type = 'info') {
             const colors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-slate-800' };
-            const toast = document.createElement('div');
-            toast.className = `toast ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3`;
-            toast.innerHTML = `<i class="fa-solid fa-circle-${type === 'success' ? 'check' : 'info'}"></i> <span>${msg}</span>`;
-            document.getElementById('toast-container').appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            const div = document.createElement('div');
+            div.className = `toast ${colors[type]} text-white px-4 py-3 rounded shadow-lg flex items-center gap-3 text-sm font-medium`;
+            div.innerHTML = `<i class="fa-solid fa-${type==='success'?'check':type==='error'?'triangle-exclamation':'info-circle'}"></i> ${msg}`;
+            document.getElementById('toast-container').appendChild(div);
+            setTimeout(() => div.remove(), 4000);
         }
-
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
     </script>
 </body>
