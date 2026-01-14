@@ -320,36 +320,51 @@
 
         // --- SCHEDULES (UPDATED FOR MULTI-SELECT) ---
         async function loadSchedules() {
-            const { data, error } = await sb.from('schedules').select('*');
+            // Fetch all schedules
+            const { data, error } = await sb.from('schedules').select('*').order('device_id');
             if(error) return showToast(error.message, 'error');
             state.schedules = data || [];
             
+            // Ensure dependencies are loaded
             if(!state.devices.length) await loadDevices();
             if(!state.playlists.length) await loadPlaylists();
             
-            document.getElementById('schedule-list').innerHTML = state.schedules.map(s => {
+            const list = document.getElementById('schedule-list');
+            
+            if(state.schedules.length === 0) {
+                list.innerHTML = `<p class="text-center text-slate-400 mt-10">No schedules active.</p>`;
+                return;
+            }
+
+            list.innerHTML = state.schedules.map(s => {
                 const dev = state.devices.find(d => d.id === s.device_id);
-                // Map all IDs to names
-                const plNames = s.playlist_ids.map(pid => {
-                    const pl = state.playlists.find(p => p.id === pid);
-                    return pl ? pl.name : 'Unknown';
-                }).join(', ');
+                const pl = state.playlists.find(p => p.id === s.playlist_id);
+                
+                // Format times (remove seconds) e.g., "08:00:00" -> "08:00"
+                const start = s.start_time.slice(0, 5);
+                const end = s.end_time.slice(0, 5);
 
                 return `
-                <div class="bg-white p-4 rounded-lg border flex items-center justify-between">
+                <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="font-bold">${dev ? dev.name : 'Unknown Device'}</span>
+                            <span class="font-bold text-slate-700">${dev ? dev.name : 'Unknown Device'}</span>
                             <i class="fa-solid fa-arrow-right text-slate-300 text-xs"></i>
-                            <span class="font-bold text-blue-600 truncate max-w-[200px]">${plNames}</span>
+                            <span class="font-bold text-blue-600">${pl ? pl.name : 'Unknown Playlist'}</span>
                         </div>
-                        <div class="text-xs text-slate-500 bg-slate-100 inline-block px-2 py-1 rounded">
-                            ${s.start_time.slice(0,5)} - ${s.end_time.slice(0,5)}
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded font-mono">
+                                <i class="fa-regular fa-clock mr-1"></i>${start} - ${end}
+                            </span>
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="editSchedule(${s.id})" class="text-slate-400 hover:text-blue-500 p-2"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteSchedule(${s.id})" class="text-slate-400 hover:text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick="openScheduleModal(${s.device_id})" class="text-slate-400 hover:text-blue-600 p-2" title="Edit Device Schedule">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="deleteSchedule(${s.id})" class="text-slate-400 hover:text-red-500 p-2" title="Delete Rule">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     </div>
                 </div>`;
             }).join('');
@@ -358,12 +373,23 @@
         // --- NEW SCHEDULE LOGIC ---
 
         // 1. Open Modal
-        function openScheduleModal() {
+       // 2. OPEN MODAL (Updated to accept a specific device ID)
+        function openScheduleModal(targetDeviceId = null) {
             document.getElementById('modal-schedule').classList.remove('hidden');
+            
             // Populate Devices Dropdown
-            document.getElementById('sch-device').innerHTML = state.devices.map(d => `<option value="${d.id}">${d.name} (${d.code})</option>`).join('');
-            // Load schedules for the first device in the list
-            if(state.devices.length > 0) loadDeviceSchedules(state.devices[0].id);
+            document.getElementById('sch-device').innerHTML = state.devices.map(d => 
+                `<option value="${d.id}">${d.name} (${d.code})</option>`
+            ).join('');
+
+            // If we clicked "Edit" on a specific row, select that device
+            if (targetDeviceId) {
+                document.getElementById('sch-device').value = targetDeviceId;
+            }
+
+            // Load the checklist for the selected device
+            const currentDevId = document.getElementById('sch-device').value;
+            if(currentDevId) loadDeviceSchedules(currentDevId);
         }
 
         // 2. Render the Playlist List with Time Inputs
@@ -463,9 +489,23 @@
             loadSchedules(); // Refresh Main List
         }
 
+        // 3. DELETE SCHEDULE
         async function deleteSchedule(id) {
-            if(confirm("Delete?")) await sb.from('schedules').delete().eq('id', id); loadSchedules();
+            if(!confirm("Remove this specific schedule rule?")) return;
+            
+            const { error } = await sb.from('schedules').delete().eq('id', id);
+            
+            if(error) showToast(error.message, 'error'); 
+            else { 
+                showToast('Schedule Removed', 'success'); 
+                loadSchedules(); 
+            }
         }
+        
+        // 4. HELPER: Triggered when you change the dropdown in the modal
+        // (Make sure your HTML select has: onchange="loadDeviceSchedules(this.value)")
+        // This was likely already in your code from the previous step, but ensuring it is here.
+        // If 'loadDeviceSchedules' is missing, copy it from the previous response.
 
         async function loadDevices() {
             const { data } = await sb.from('devices').select('*').order('id', {ascending: false});
