@@ -150,9 +150,9 @@
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
 
     <script>
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; 
-        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+     const YOUR_SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co'; 
+        const YOUR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4'; // PASTE KEY HERE
+        const sb = supabase.createClient(YOUR_SUPABASE_URL, YOUR_SUPABASE_KEY);
 
         let state = { user: null, media: [], playlists: [], devices: [], schedules: [], draft: [] };
 
