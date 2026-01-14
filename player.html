@@ -85,46 +85,50 @@
             if(!device) return reloadApp(); 
 
             // 3. CHECK SCHEDULES
-            // We fetch all schedules for this device
-            const { data: schedules } = await sb.from('schedules').select('*').eq('device_id', deviceId);
-            
-            // Calculate Current Time string "HH:MM"
             const now = new Date();
             const timeStr = now.toTimeString().slice(0, 5); // Returns "14:30"
+            const { data: schedules } = await sb.from('schedules').select('*').eq('device_id', deviceId);
             
-            let activeId = device.playlist_id; // Start with Default
+            let activePlaylistIds = []; 
             let statusText = 'Default Playlist';
 
-            // Check if any schedule matches RIGHT NOW
             if(schedules && schedules.length > 0) {
-                // Find a schedule where Now is between Start and End
-                const match = schedules.find(s => {
-                    // Handle simple range (e.g. 08:00 to 12:00)
-                    // We assume schedules don't cross midnight for simplicity in MVP
-                    return timeStr >= s.start_time.slice(0,5) && timeStr <= s.end_time.slice(0,5);
-                });
-
+                const match = schedules.find(s => timeStr >= s.start_time.slice(0,5) && timeStr <= s.end_time.slice(0,5));
                 if(match) { 
-                    activeId = match.playlist_id; 
+                    activePlaylistIds = match.playlist_ids; // Now an Array
                     statusText = `Scheduled (${s.start_time.slice(0,5)} - ${s.end_time.slice(0,5)})`; 
                 }
             }
 
-            // 4. Play Content
-            if (!activeId) { 
+            // Fallback to Default if no schedule match
+            if (activePlaylistIds.length === 0 && device.playlist_id) {
+                activePlaylistIds = [device.playlist_id];
+            }
+
+            if (activePlaylistIds.length === 0) { 
                 stopPlayback(); 
                 document.getElementById('status-pill').innerText = 'No Content'; 
                 return; 
             }
 
-            const { data: pl } = await sb.from('playlists').select('items').eq('id', activeId).single();
-            if (!pl || !pl.items || !pl.items.length) { stopPlayback(); return; }
+            // 4. Load ALL Playlists Items
+            const { data: playlists } = await sb.from('playlists').select('items').in('id', activePlaylistIds);
+            
+            if (!playlists || !playlists.length) { stopPlayback(); return; }
+
+            // Merge items from all playlists
+            let allItems = [];
+            playlists.forEach(pl => {
+                if(pl.items) allItems = allItems.concat(pl.items);
+            });
+
+            if (allItems.length === 0) { stopPlayback(); return; }
 
             // Sync Media Files
-            const ids = pl.items.map(i => i.id);
+            const ids = allItems.map(i => i.id);
             const { data: media } = await sb.from('media').select('id, url, name').in('id', ids);
             
-            const newQueue = pl.items.map(i => {
+            const newQueue = allItems.map(i => {
                 const f = media.find(m => m.id === i.id);
                 return f ? { ...f, duration: i.duration } : null;
             }).filter(Boolean);
@@ -142,4 +146,5 @@
     </script>
 </body>
 </html>
+
 
