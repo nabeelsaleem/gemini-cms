@@ -64,9 +64,9 @@
             
             <div id="view-media" class="hidden space-y-6">
                 <div class="flex gap-2 mb-4">
-                    <button onclick="filterMedia('all')" class="px-4 py-1 rounded-full bg-white border text-sm hover:bg-slate-50 focus:bg-blue-100 focus:text-blue-700">All</button>
-                    <button onclick="filterMedia('image')" class="px-4 py-1 rounded-full bg-white border text-sm hover:bg-slate-50 focus:bg-blue-100 focus:text-blue-700">Images</button>
-                    <button onclick="filterMedia('video')" class="px-4 py-1 rounded-full bg-white border text-sm hover:bg-slate-50 focus:bg-blue-100 focus:text-blue-700">Videos</button>
+                    <button onclick="filterMedia('all')" class="px-4 py-1 rounded-full bg-white border text-sm hover:bg-slate-50">All</button>
+                    <button onclick="filterMedia('image')" class="px-4 py-1 rounded-full bg-white border text-sm hover:bg-slate-50">Images</button>
+                    <button onclick="filterMedia('video')" class="px-4 py-1 rounded-full bg-white border text-sm hover:bg-slate-50">Videos</button>
                 </div>
                 <input type="file" id="media-upload-input" class="hidden" multiple onchange="processUpload()">
                 <div id="media-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
@@ -77,9 +77,6 @@
             </div>
 
             <div id="view-schedules" class="hidden space-y-6">
-                <div class="bg-blue-50 border border-blue-200 rounded p-4 text-sm text-blue-800 mb-4">
-                    To run multiple playlists on one screen (e.g., Morning & Evening), simply create two separate schedules for the same device with different times.
-                </div>
                 <div id="schedule-list" class="space-y-3"></div>
             </div>
 
@@ -121,14 +118,16 @@
     <div id="modal-schedule" class="fixed inset-0 z-50 bg-black/60 hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white w-full max-w-md rounded-xl shadow-2xl p-6">
             <h3 class="font-bold text-lg mb-4" id="sch-modal-title">Add Schedule</h3>
-            <input type="hidden" id="sch-id"> <div class="space-y-4">
+            <input type="hidden" id="sch-id">
+            <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Device</label>
                     <select id="sch-device" class="w-full p-2 border rounded"></select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Playlist</label>
-                    <select id="sch-playlist" class="w-full p-2 border rounded"></select>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Select Playlists (Run Sequentially)</label>
+                    <div id="sch-playlist-container" class="w-full p-2 border rounded h-32 overflow-y-auto bg-slate-50 space-y-1">
+                        </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -151,14 +150,12 @@
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
 
     <script>
-        // --- CONFIGURATION ---
-        const SUPABASE_URL = 'https://kbmnkxfosrowmqedykur.supabase.co '; 
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibW5reGZvc3Jvd21xZWR5a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTIxNTEsImV4cCI6MjA4Mzc4ODE1MX0.l9av5SrgoknXOJZwbmRjLXcB9SYuelivUA4GSv9gsl4';
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; 
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let state = { user: null, media: [], playlists: [], devices: [], schedules: [], draft: [] };
 
-        // --- AUTH ---
         sb.auth.onAuthStateChange((event, session) => {
             if (session) {
                 state.user = session.user;
@@ -186,7 +183,6 @@
         }
         async function logout() { await sb.auth.signOut(); location.reload(); }
 
-        // --- NAV ---
         function nav(view) {
             ['media', 'playlists', 'devices', 'schedules'].forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
             document.getElementById(`view-${view}`).classList.remove('hidden');
@@ -214,7 +210,6 @@
             }
         }
 
-        // --- MEDIA ---
         async function loadMedia() {
             const { data, error } = await sb.from('media').select('*').order('id', {ascending: false});
             if(error) return showToast(error.message, 'error');
@@ -258,7 +253,6 @@
             loadMedia();
         }
 
-        // --- PLAYLISTS ---
         async function loadPlaylists() {
             const { data, error } = await sb.from('playlists').select('*').order('id', {ascending: false});
             if(error) return showToast(error.message, 'error');
@@ -337,7 +331,7 @@
             if(confirm("Delete?")) await sb.from('playlists').delete().eq('id', id); loadPlaylists();
         }
 
-        // --- SCHEDULES ---
+        // --- SCHEDULES (UPDATED FOR MULTI-SELECT) ---
         async function loadSchedules() {
             const { data, error } = await sb.from('schedules').select('*');
             if(error) return showToast(error.message, 'error');
@@ -348,14 +342,19 @@
             
             document.getElementById('schedule-list').innerHTML = state.schedules.map(s => {
                 const dev = state.devices.find(d => d.id === s.device_id);
-                const pl = state.playlists.find(p => p.id === s.playlist_id);
+                // Map all IDs to names
+                const plNames = s.playlist_ids.map(pid => {
+                    const pl = state.playlists.find(p => p.id === pid);
+                    return pl ? pl.name : 'Unknown';
+                }).join(', ');
+
                 return `
                 <div class="bg-white p-4 rounded-lg border flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <span class="font-bold">${dev ? dev.name : 'Unknown Device'}</span>
                             <i class="fa-solid fa-arrow-right text-slate-300 text-xs"></i>
-                            <span class="font-bold text-blue-600">${pl ? pl.name : 'Unknown Playlist'}</span>
+                            <span class="font-bold text-blue-600 truncate max-w-[200px]">${plNames}</span>
                         </div>
                         <div class="text-xs text-slate-500 bg-slate-100 inline-block px-2 py-1 rounded">
                             ${s.start_time.slice(0,5)} - ${s.end_time.slice(0,5)}
@@ -372,15 +371,28 @@
         function openScheduleModal(sch = null) {
             document.getElementById('modal-schedule').classList.remove('hidden');
             document.getElementById('sch-device').innerHTML = state.devices.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
-            document.getElementById('sch-playlist').innerHTML = state.playlists.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            
+            // Generate Checklist
+            const container = document.getElementById('sch-playlist-container');
+            container.innerHTML = state.playlists.map(p => `
+                <label class="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer">
+                    <input type="checkbox" value="${p.id}" class="sch-pl-check rounded text-blue-600 focus:ring-0">
+                    <span class="text-sm text-slate-700">${p.name}</span>
+                </label>
+            `).join('');
             
             if(sch) {
                 document.getElementById('sch-modal-title').innerText = "Edit Schedule";
                 document.getElementById('sch-id').value = sch.id;
                 document.getElementById('sch-device').value = sch.device_id;
-                document.getElementById('sch-playlist').value = sch.playlist_id;
                 document.getElementById('sch-start').value = sch.start_time;
                 document.getElementById('sch-end').value = sch.end_time;
+                
+                // Check active playlists
+                sch.playlist_ids.forEach(pid => {
+                    const cb = document.querySelector(`.sch-pl-check[value="${pid}"]`);
+                    if(cb) cb.checked = true;
+                });
             } else {
                 document.getElementById('sch-modal-title').innerText = "Add Schedule";
                 document.getElementById('sch-id').value = "";
@@ -397,12 +409,17 @@
         async function saveSchedule() {
             const id = document.getElementById('sch-id').value;
             const device_id = document.getElementById('sch-device').value;
-            const playlist_id = document.getElementById('sch-playlist').value;
             const start_time = document.getElementById('sch-start').value;
             const end_time = document.getElementById('sch-end').value;
-            if(!start_time || !end_time) return showToast('Times required', 'error');
             
-            const payload = { user_id: state.user.id, device_id, playlist_id, start_time, end_time };
+            // Get Checked IDs
+            const checkboxes = document.querySelectorAll('.sch-pl-check:checked');
+            const playlist_ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            if(!start_time || !end_time) return showToast('Times required', 'error');
+            if(playlist_ids.length === 0) return showToast('Select at least one playlist', 'error');
+            
+            const payload = { user_id: state.user.id, device_id, playlist_ids, start_time, end_time };
             
             const { error } = id ? await sb.from('schedules').update(payload).eq('id', id) : await sb.from('schedules').insert(payload);
             
@@ -413,7 +430,6 @@
             if(confirm("Delete?")) await sb.from('schedules').delete().eq('id', id); loadSchedules();
         }
 
-        // --- DEVICES ---
         async function loadDevices() {
             const { data } = await sb.from('devices').select('*').order('id', {ascending: false});
             state.devices = data || [];
