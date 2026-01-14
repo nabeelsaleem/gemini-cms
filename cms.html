@@ -116,33 +116,20 @@
     </div>
 
     <div id="modal-schedule" class="fixed inset-0 z-50 bg-black/60 hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white w-full max-w-md rounded-xl shadow-2xl p-6">
-            <h3 class="font-bold text-lg mb-4" id="sch-modal-title">Add Schedule</h3>
-            <input type="hidden" id="sch-id">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Device</label>
-                    <select id="sch-device" class="w-full p-2 border rounded"></select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Select Playlists (Run Sequentially)</label>
-                    <div id="sch-playlist-container" class="w-full p-2 border rounded h-32 overflow-y-auto bg-slate-50 space-y-1">
-                        </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Start Time</label>
-                        <input type="time" id="sch-start" class="w-full p-2 border rounded">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">End Time</label>
-                        <input type="time" id="sch-end" class="w-full p-2 border rounded">
-                    </div>
-                </div>
+        <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl p-6 max-h-[90vh] flex flex-col">
+            <h3 class="font-bold text-lg mb-4">Manage Device Schedule</h3>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Select Device</label>
+                <select id="sch-device" class="w-full p-2 border rounded bg-slate-50 font-medium" onchange="loadDeviceSchedules(this.value)"></select>
             </div>
-            <div class="mt-6 flex justify-end gap-3">
-                <button onclick="closeModal('modal-schedule')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Cancel</button>
-                <button onclick="saveSchedule()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+
+            <div class="flex-1 overflow-y-auto border rounded-lg bg-slate-50 p-2 space-y-2" id="sch-playlist-container">
+                </div>
+
+            <div class="mt-6 flex justify-end gap-3 pt-4 border-t">
+                <button onclick="closeModal('modal-schedule')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Close</button>
+                <button onclick="saveSchedule()" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 shadow-sm">Save All Changes</button>
             </div>
         </div>
     </div>
@@ -368,62 +355,112 @@
             }).join('');
         }
 
-        function openScheduleModal(sch = null) {
+        // --- NEW SCHEDULE LOGIC ---
+
+        // 1. Open Modal
+        function openScheduleModal() {
             document.getElementById('modal-schedule').classList.remove('hidden');
-            document.getElementById('sch-device').innerHTML = state.devices.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
-            
-            // Generate Checklist
+            // Populate Devices Dropdown
+            document.getElementById('sch-device').innerHTML = state.devices.map(d => `<option value="${d.id}">${d.name} (${d.code})</option>`).join('');
+            // Load schedules for the first device in the list
+            if(state.devices.length > 0) loadDeviceSchedules(state.devices[0].id);
+        }
+
+        // 2. Render the Playlist List with Time Inputs
+        function loadDeviceSchedules(deviceId) {
+            deviceId = parseInt(deviceId);
+            // Filter existing schedules for this specific device
+            const existing = state.schedules.filter(s => s.device_id === deviceId);
+
             const container = document.getElementById('sch-playlist-container');
-            container.innerHTML = state.playlists.map(p => `
-                <label class="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer">
-                    <input type="checkbox" value="${p.id}" class="sch-pl-check rounded text-blue-600 focus:ring-0">
-                    <span class="text-sm text-slate-700">${p.name}</span>
-                </label>
-            `).join('');
-            
-            if(sch) {
-                document.getElementById('sch-modal-title').innerText = "Edit Schedule";
-                document.getElementById('sch-id').value = sch.id;
-                document.getElementById('sch-device').value = sch.device_id;
-                document.getElementById('sch-start').value = sch.start_time;
-                document.getElementById('sch-end').value = sch.end_time;
-                
-                // Check active playlists
-                sch.playlist_ids.forEach(pid => {
-                    const cb = document.querySelector(`.sch-pl-check[value="${pid}"]`);
-                    if(cb) cb.checked = true;
-                });
+            container.innerHTML = state.playlists.map(p => {
+                // Check if this playlist is already scheduled
+                const match = existing.find(s => s.playlist_id === p.id);
+                const isChecked = !!match;
+                const start = match ? match.start_time : '';
+                const end = match ? match.end_time : '';
+
+                return `
+                <div class="bg-white border rounded-lg p-3 transition-all ${isChecked ? 'border-blue-500 shadow-sm' : 'border-slate-200'}">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" 
+                               class="w-5 h-5 rounded text-blue-600 focus:ring-0 cursor-pointer" 
+                               value="${p.id}" 
+                               id="chk-${p.id}" 
+                               onchange="toggleTimeInputs(${p.id})"
+                               ${isChecked ? 'checked' : ''}>
+                        
+                        <label for="chk-${p.id}" class="flex-1 font-medium text-slate-700 cursor-pointer select-none">
+                            ${p.name}
+                            <span class="text-xs text-slate-400 font-normal ml-2">(${p.items ? p.items.length : 0} items)</span>
+                        </label>
+                    </div>
+
+                    <div id="times-${p.id}" class="${isChecked ? 'flex' : 'hidden'} items-center gap-4 mt-3 pl-8 animate-fade">
+                        <div class="flex-1">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Start</label>
+                            <input type="time" id="start-${p.id}" value="${start}" class="w-full p-1.5 border rounded text-sm bg-slate-50">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">End</label>
+                            <input type="time" id="end-${p.id}" value="${end}" class="w-full p-1.5 border rounded text-sm bg-slate-50">
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // 3. Toggle Helper
+        function toggleTimeInputs(id) {
+            const wrapper = document.getElementById(`times-${id}`);
+            const checkbox = document.getElementById(`chk-${id}`);
+            if(checkbox.checked) {
+                wrapper.classList.remove('hidden');
+                wrapper.classList.add('flex');
             } else {
-                document.getElementById('sch-modal-title').innerText = "Add Schedule";
-                document.getElementById('sch-id').value = "";
-                document.getElementById('sch-start').value = "";
-                document.getElementById('sch-end').value = "";
+                wrapper.classList.add('hidden');
+                wrapper.classList.remove('flex');
             }
         }
 
-        function editSchedule(id) {
-            const sch = state.schedules.find(s => s.id === id);
-            openScheduleModal(sch);
-        }
-
+        // 4. Save Logic (Deletes old schedules for device, Inserts new ones)
         async function saveSchedule() {
-            const id = document.getElementById('sch-id').value;
-            const device_id = document.getElementById('sch-device').value;
-            const start_time = document.getElementById('sch-start').value;
-            const end_time = document.getElementById('sch-end').value;
+            const deviceId = parseInt(document.getElementById('sch-device').value);
             
-            // Get Checked IDs
-            const checkboxes = document.querySelectorAll('.sch-pl-check:checked');
-            const playlist_ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            // 1. Identify selected playlists
+            const checkboxes = document.querySelectorAll('#sch-playlist-container input[type="checkbox"]:checked');
+            const newSchedules = [];
 
-            if(!start_time || !end_time) return showToast('Times required', 'error');
-            if(playlist_ids.length === 0) return showToast('Select at least one playlist', 'error');
-            
-            const payload = { user_id: state.user.id, device_id, playlist_ids, start_time, end_time };
-            
-            const { error } = id ? await sb.from('schedules').update(payload).eq('id', id) : await sb.from('schedules').insert(payload);
-            
-            if(error) showToast(error.message, 'error'); else { showToast('Saved', 'success'); closeModal('modal-schedule'); loadSchedules(); }
+            // 2. Build Payload
+            for (let cb of checkboxes) {
+                const pid = cb.value;
+                const start = document.getElementById(`start-${pid}`).value;
+                const end = document.getElementById(`end-${pid}`).value;
+
+                if (!start || !end) return showToast(`Set times for selected playlists`, 'error');
+                
+                newSchedules.push({
+                    user_id: state.user.id,
+                    device_id: deviceId,
+                    playlist_id: parseInt(pid),
+                    start_time: start,
+                    end_time: end
+                });
+            }
+
+            // 3. Database Transaction (Simulated)
+            // A. Delete ALL existing schedules for this device (Clean slate)
+            await sb.from('schedules').delete().eq('device_id', deviceId);
+
+            // B. Insert New ones (if any selected)
+            if (newSchedules.length > 0) {
+                const { error } = await sb.from('schedules').insert(newSchedules);
+                if (error) return showToast(error.message, 'error');
+            }
+
+            showToast('Schedule Updated', 'success');
+            closeModal('modal-schedule');
+            loadSchedules(); // Refresh Main List
         }
 
         async function deleteSchedule(id) {
