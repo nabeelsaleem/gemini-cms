@@ -75,102 +75,71 @@
         }
 
         async function checkUpdates() {
-            updateStatus('Checking...');
+            document.getElementById('status-pill').innerText = 'Checking...';
             
             // 1. Heartbeat
             await sb.from('devices').update({ status: 'online', last_seen: new Date() }).eq('code', deviceCode);
 
-            // 2. Fetch Device & Default Playlist
-            const { data: device } = await sb.from('devices').select('playlist_id').eq('id', deviceId).single();
-            if(!device) return reloadApp(); // Device deleted
+            // 2. Fetch Device Data
+            const { data: device } = await sb.from('devices').select('id, playlist_id').eq('id', deviceId).single();
+            if(!device) return reloadApp(); 
 
-            // 3. CHECK SCHEDULES (Priority)
-            const now = new Date();
-            const currentTime = now.toTimeString().slice(0,5); // "14:30"
+            // 3. CHECK SCHEDULES
+            // We fetch all schedules for this device
+            const { data: schedules } = await sb.from('schedules').select('*').eq('device_id', deviceId);
             
-            const { data: schedules } = await sb.from('schedules')
-                .select('*')
-                .eq('device_id', deviceId);
+            // Calculate Current Time string "HH:MM"
+            const now = new Date();
+            const timeStr = now.toTimeString().slice(0, 5); // Returns "14:30"
+            
+            let activeId = device.playlist_id; // Start with Default
+            let statusText = 'Default Playlist';
 
-            let activePlaylistId = device.playlist_id; // Default
-
-            // If a schedule matches NOW, override default
+            // Check if any schedule matches RIGHT NOW
             if(schedules && schedules.length > 0) {
-                const activeSchedule = schedules.find(s => currentTime >= s.start_time && currentTime <= s.end_time);
-                if(activeSchedule) {
-                    activePlaylistId = activeSchedule.playlist_id;
-                    updateStatus(`Scheduled: ${s.start_time}-${s.end_time}`);
+                // Find a schedule where Now is between Start and End
+                const match = schedules.find(s => {
+                    // Handle simple range (e.g. 08:00 to 12:00)
+                    // We assume schedules don't cross midnight for simplicity in MVP
+                    return timeStr >= s.start_time.slice(0,5) && timeStr <= s.end_time.slice(0,5);
+                });
+
+                if(match) { 
+                    activeId = match.playlist_id; 
+                    statusText = `Scheduled (${s.start_time.slice(0,5)} - ${s.end_time.slice(0,5)})`; 
                 }
             }
 
-            if (!activePlaylistId) {
-                stopPlayback();
-                updateStatus('No Content');
-                return;
-            }
-
-            // 4. Load Playlist Items
-            const { data: playlist } = await sb.from('playlists').select('items').eq('id', activePlaylistId).single();
-            
-            if (!playlist || !playlist.items || !playlist.items.length) {
+            // 4. Play Content
+            if (!activeId) { 
                 stopPlayback(); 
-                return;
+                document.getElementById('status-pill').innerText = 'No Content'; 
+                return; 
             }
 
-            // 5. Sync Content
-            const ids = playlist.items.map(i => i.id);
-            const { data: mediaFiles } = await sb.from('media').select('id, url').in('id', ids);
+            const { data: pl } = await sb.from('playlists').select('items').eq('id', activeId).single();
+            if (!pl || !pl.items || !pl.items.length) { stopPlayback(); return; }
+
+            // Sync Media Files
+            const ids = pl.items.map(i => i.id);
+            const { data: media } = await sb.from('media').select('id, url, name').in('id', ids);
             
-            const newQueue = playlist.items.map(pItem => {
-                const file = mediaFiles.find(f => f.id === pItem.id);
-                return file ? { ...file, duration: pItem.duration } : null;
+            const newQueue = pl.items.map(i => {
+                const f = media.find(m => m.id === i.id);
+                return f ? { ...f, duration: i.duration } : null;
             }).filter(Boolean);
 
+            // Only restart loop if playlist changed
             if (JSON.stringify(newQueue) !== JSON.stringify(currentPlaylist)) {
+                console.log("Playlist changed to:", statusText);
                 currentPlaylist = newQueue;
                 currentIndex = 0;
                 preloadImages(currentPlaylist);
                 if (!isPlaying) runLoop();
             }
+            document.getElementById('status-pill').innerText = statusText;
         }
-
-        function updateStatus(msg) { document.getElementById('status-pill').innerText = msg; }
-        
-        function stopPlayback() {
-            currentPlaylist = []; isPlaying = false;
-            document.getElementById('active-slide').src = '';
-        }
-
-        function preloadImages(queue) {
-            queue.forEach(item => {
-                if (!imageCache[item.url]) {
-                    const img = new Image();
-                    img.src = item.url;
-                    imageCache[item.url] = img;
-                }
-            });
-        }
-
-        function runLoop() {
-            if (currentPlaylist.length === 0) return;
-            isPlaying = true;
-            
-            const item = currentPlaylist[currentIndex];
-            const slide = document.getElementById('active-slide');
-            
-            slide.classList.remove('fade-enter-active');
-            
-            setTimeout(() => {
-                slide.src = item.url;
-                slide.classList.add('fade-enter-active');
-                
-                const nextDuration = (item.duration || 10) * 1000;
-                currentIndex = (currentIndex + 1) % currentPlaylist.length;
-                setTimeout(runLoop, nextDuration);
-            }, 500);
-        }
-
-        function reloadApp() { localStorage.removeItem('ss_device_code'); location.reload(); }
     </script>
 </body>
 </html>
+
