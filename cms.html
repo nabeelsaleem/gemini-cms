@@ -13,7 +13,6 @@
         .sidebar-link { transition: all 0.2s; border-left: 3px solid transparent; }
         .sidebar-link:hover, .sidebar-link.active { background-color: #1e293b; border-left-color: #3b82f6; }
         .sidebar-link.active i { color: #3b82f6; }
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .toast { animation: slideIn 0.3s ease-out; }
@@ -36,19 +35,19 @@
         </div>
     </div>
 
-    <aside id="sidebar" class="w-64 bg-slate-900 text-white flex-col hidden md:flex shrink-0 transition-all">
+    <aside id="sidebar" class="w-64 bg-slate-900 text-white flex-col hidden md:flex shrink-0">
         <div class="p-6 border-b border-slate-800 font-bold text-xl tracking-tight flex items-center gap-2">
             <i class="fa-solid fa-tv text-blue-500"></i> SimpliSign
         </div>
         <nav class="flex-1 py-6 space-y-1">
             <button onclick="nav('media')" class="sidebar-link w-full text-left px-6 py-3 text-slate-300 hover:text-white flex items-center gap-3"><i class="fa-regular fa-images w-5"></i> Media</button>
             <button onclick="nav('playlists')" class="sidebar-link w-full text-left px-6 py-3 text-slate-300 hover:text-white flex items-center gap-3"><i class="fa-solid fa-layer-group w-5"></i> Playlists</button>
-            <button onclick="nav('schedules')" class="sidebar-link w-full text-left px-6 py-3 text-slate-300 hover:text-white flex items-center gap-3"><i class="fa-regular fa-calendar-check w-5"></i> Schedules <span class="text-[10px] bg-blue-600 px-1.5 rounded ml-auto">NEW</span></button>
+            <button onclick="nav('schedules')" class="sidebar-link w-full text-left px-6 py-3 text-slate-300 hover:text-white flex items-center gap-3"><i class="fa-regular fa-clock w-5"></i> Schedules</button>
             <button onclick="nav('devices')" class="sidebar-link w-full text-left px-6 py-3 text-slate-300 hover:text-white flex items-center gap-3"><i class="fa-solid fa-desktop w-5"></i> Screens</button>
         </nav>
         <div class="p-6 border-t border-slate-800">
             <div class="flex items-center gap-3 mb-4">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center font-bold text-sm">U</div>
+                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-sm">U</div>
                 <div class="overflow-hidden"><p class="font-medium truncate text-sm" id="user-email">...</p></div>
             </div>
             <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 flex items-center gap-2"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</button>
@@ -64,10 +63,10 @@
         <div class="flex-1 overflow-auto p-8 bg-slate-50 relative">
             
             <div id="view-media" class="hidden space-y-6">
-                <div class="flex gap-2">
-                    <button onclick="filterMedia('all')" class="px-4 py-1.5 rounded-full bg-slate-200 text-sm font-medium hover:bg-slate-300 focus:bg-blue-100 focus:text-blue-700">All</button>
-                    <button onclick="filterMedia('image')" class="px-4 py-1.5 rounded-full bg-slate-200 text-sm font-medium hover:bg-slate-300 focus:bg-blue-100 focus:text-blue-700">Images</button>
-                    <button onclick="filterMedia('video')" class="px-4 py-1.5 rounded-full bg-slate-200 text-sm font-medium hover:bg-slate-300 focus:bg-blue-100 focus:text-blue-700">Videos</button>
+                <div class="flex gap-2 mb-4">
+                    <button onclick="filterMedia('all')" class="px-4 py-1 rounded-full bg-white border text-sm hover:bg-slate-50 focus:bg-blue-100 focus:text-blue-700">All</button>
+                    <button onclick="filterMedia('image')" class="px-4 py-1 rounded-full bg-white border text-sm hover:bg-slate-50 focus:bg-blue-100 focus:text-blue-700">Images</button>
+                    <button onclick="filterMedia('video')" class="px-4 py-1 rounded-full bg-white border text-sm hover:bg-slate-50 focus:bg-blue-100 focus:text-blue-700">Videos</button>
                 </div>
                 <input type="file" id="media-upload-input" class="hidden" multiple onchange="processUpload()">
                 <div id="media-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
@@ -78,8 +77,8 @@
             </div>
 
             <div id="view-schedules" class="hidden space-y-6">
-                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 mb-6">
-                    <i class="fa-solid fa-info-circle mr-2"></i> Schedules override the default playlist on a device during specific times.
+                <div class="bg-blue-50 border border-blue-200 rounded p-4 text-sm text-blue-800 mb-4">
+                    To run multiple playlists on one screen (e.g., Morning & Evening), simply create two separate schedules for the same device with different times.
                 </div>
                 <div id="schedule-list" class="space-y-3"></div>
             </div>
@@ -94,14 +93,14 @@
         <div class="bg-white w-[95%] max-w-5xl h-[85vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
             <div class="p-4 border-b flex justify-between items-center bg-slate-50">
                 <h3 class="font-bold text-lg">Playlist Editor</h3>
-                <button onclick="closeModal('modal-playlist')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-times text-xl"></i></button>
+                <button onclick="closeModal('modal-playlist')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-times"></i></button>
             </div>
             <div class="flex-1 flex overflow-hidden">
                 <div class="w-1/3 border-r bg-white flex flex-col">
                     <div class="p-4 border-b space-y-3">
                         <input type="hidden" id="pl-id">
-                        <label class="text-xs font-bold text-slate-500 uppercase">Playlist Name</label>
-                        <input type="text" id="pl-name" class="w-full p-2 border rounded focus:ring-2 ring-blue-500 outline-none" placeholder="Enter name...">
+                        <label class="text-xs font-bold text-slate-500 uppercase">Name</label>
+                        <input type="text" id="pl-name" class="w-full p-2 border rounded focus:ring-2 ring-blue-500 outline-none">
                     </div>
                     <div class="flex-1 overflow-y-auto p-4 bg-slate-50">
                         <h4 class="text-xs font-bold text-slate-400 uppercase mb-3">Library</h4>
@@ -114,21 +113,21 @@
                 </div>
             </div>
             <div class="p-4 border-t bg-white flex justify-end gap-3">
-                <button onclick="savePlaylist()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium shadow-sm" id="save-pl-btn">Save Playlist</button>
+                <button onclick="savePlaylist()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium">Save Playlist</button>
             </div>
         </div>
     </div>
 
     <div id="modal-schedule" class="fixed inset-0 z-50 bg-black/60 hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white w-full max-w-md rounded-xl shadow-2xl p-6">
-            <h3 class="font-bold text-lg mb-4">Add Schedule</h3>
-            <div class="space-y-4">
+            <h3 class="font-bold text-lg mb-4" id="sch-modal-title">Add Schedule</h3>
+            <input type="hidden" id="sch-id"> <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Device</label>
                     <select id="sch-device" class="w-full p-2 border rounded"></select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Playlist to Run</label>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Playlist</label>
                     <select id="sch-playlist" class="w-full p-2 border rounded"></select>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -144,7 +143,7 @@
             </div>
             <div class="mt-6 flex justify-end gap-3">
                 <button onclick="closeModal('modal-schedule')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Cancel</button>
-                <button onclick="saveSchedule()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Schedule</button>
+                <button onclick="saveSchedule()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
             </div>
         </div>
     </div>
@@ -187,7 +186,7 @@
         }
         async function logout() { await sb.auth.signOut(); location.reload(); }
 
-        // --- NAVIGATION ---
+        // --- NAV ---
         function nav(view) {
             ['media', 'playlists', 'devices', 'schedules'].forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
             document.getElementById(`view-${view}`).classList.remove('hidden');
@@ -198,19 +197,19 @@
             
             if (view === 'media') {
                 title.innerText = 'Media Library';
-                btn.innerHTML = `<button onclick="document.getElementById('media-upload-input').click()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium text-sm">+ Upload</button>`;
+                btn.innerHTML = `<button onclick="document.getElementById('media-upload-input').click()" class="bg-blue-600 text-white px-4 py-2 rounded font-medium text-sm">+ Upload</button>`;
                 loadMedia();
             } else if (view === 'playlists') {
                 title.innerText = 'Playlists';
-                btn.innerHTML = `<button onclick="openPlaylistBuilder()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium text-sm">+ Create Playlist</button>`;
+                btn.innerHTML = `<button onclick="openPlaylistBuilder()" class="bg-blue-600 text-white px-4 py-2 rounded font-medium text-sm">+ New Playlist</button>`;
                 loadPlaylists();
             } else if (view === 'schedules') {
                 title.innerText = 'Schedules';
-                btn.innerHTML = `<button onclick="openScheduleModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium text-sm">+ Add Schedule</button>`;
+                btn.innerHTML = `<button onclick="openScheduleModal()" class="bg-blue-600 text-white px-4 py-2 rounded font-medium text-sm">+ Add Schedule</button>`;
                 loadSchedules();
             } else {
-                title.innerText = 'Connected Screens';
-                btn.innerHTML = `<button onclick="addDevice()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium text-sm">+ New Screen</button>`;
+                title.innerText = 'Screens';
+                btn.innerHTML = `<button onclick="addDevice()" class="bg-blue-600 text-white px-4 py-2 rounded font-medium text-sm">+ New Screen</button>`;
                 loadDevices();
             }
         }
@@ -227,17 +226,14 @@
             const grid = document.getElementById('media-grid');
             grid.innerHTML = '';
             const filtered = type === 'all' ? state.media : state.media.filter(m => m.type.includes(type));
-            
-            if (filtered.length === 0) return grid.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10">No media found.</p>`;
-
             filtered.forEach(m => {
                 grid.innerHTML += `
-                    <div class="group relative bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
+                    <div class="group relative bg-white border rounded-xl overflow-hidden shadow-sm">
                         <div class="aspect-video bg-slate-100 relative">
-                            ${m.type.includes('image') ? `<img src="${m.url}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-slate-400"><i class="fa-solid fa-video text-3xl"></i></div>`}
-                            <button onclick="deleteMedia(${m.id})" class="absolute top-2 right-2 p-1.5 bg-white rounded-full text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-50 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+                            ${m.type.includes('image') ? `<img src="${m.url}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-slate-400"><i class="fa-solid fa-video text-2xl"></i></div>`}
+                            <button onclick="deleteMedia(${m.id})" class="absolute top-2 right-2 p-1 bg-white rounded-full text-red-500 opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash text-xs"></i></button>
                         </div>
-                        <div class="p-3"><p class="text-xs font-bold truncate text-slate-700" title="${m.name}">${m.name}</p></div>
+                        <div class="p-3"><p class="text-xs font-bold truncate">${m.name}</p></div>
                     </div>`;
             });
         }
@@ -248,8 +244,7 @@
             showToast('Uploading...', 'info');
             for(let file of files) {
                 const name = `${Date.now()}-${file.name.replace(/\s/g,'')}`;
-                const { error } = await sb.storage.from('media').upload(name, file);
-                if(error) { showToast(`Upload failed: ${error.message}`, 'error'); continue; }
+                await sb.storage.from('media').upload(name, file);
                 const { data } = sb.storage.from('media').getPublicUrl(name);
                 await sb.from('media').insert({ user_id: state.user.id, name: file.name, type: file.type, url: data.publicUrl });
             }
@@ -259,8 +254,8 @@
 
         async function deleteMedia(id) {
             if(!confirm('Delete file?')) return;
-            const { error } = await sb.from('media').delete().eq('id', id);
-            if(error) showToast(error.message, 'error'); else { showToast('Deleted', 'success'); loadMedia(); }
+            await sb.from('media').delete().eq('id', id);
+            loadMedia();
         }
 
         // --- PLAYLISTS ---
@@ -269,18 +264,18 @@
             if(error) return showToast(error.message, 'error');
             state.playlists = data || [];
             document.getElementById('playlist-list').innerHTML = state.playlists.map(p => `
-                <div class="bg-white p-5 rounded-xl border shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div class="bg-white p-5 rounded-xl border shadow-sm flex flex-col justify-between">
                     <div>
                         <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-slate-800 text-lg">${p.name}</h3>
+                            <h3 class="font-bold text-lg">${p.name}</h3>
                             <div class="flex gap-2">
-                                <button onclick="editPlaylistName(${p.id}, '${p.name}')" class="text-slate-400 hover:text-blue-500"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="renamePlaylist(${p.id}, '${p.name}')" class="text-slate-400 hover:text-blue-500"><i class="fa-solid fa-pen"></i></button>
                                 <button onclick="deletePlaylist(${p.id})" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </div>
                         <p class="text-sm text-slate-500">${p.items ? p.items.length : 0} items</p>
                     </div>
-                    <button onclick="editPlaylist(${p.id})" class="mt-4 w-full py-2 border rounded text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-600">Edit Content</button>
+                    <button onclick="editPlaylist(${p.id})" class="mt-4 w-full py-2 border rounded text-sm font-medium hover:bg-slate-50">Edit Content</button>
                 </div>
             `).join('');
         }
@@ -288,12 +283,11 @@
         function openPlaylistBuilder(pl = null) {
             document.getElementById('modal-playlist').classList.remove('hidden');
             document.getElementById('pl-source-list').innerHTML = state.media.map(m => `
-                <div onclick="addToDraft(${m.id})" class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded cursor-pointer border border-transparent hover:border-blue-200 transition">
-                    <img src="${m.url}" class="w-10 h-10 rounded object-cover bg-slate-200">
-                    <div class="flex-1 overflow-hidden"><p class="text-xs font-bold truncate">${m.name}</p></div>
+                <div onclick="addToDraft(${m.id})" class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                    <img src="${m.url}" class="w-8 h-8 rounded object-cover bg-slate-200">
+                    <p class="text-xs font-bold truncate flex-1">${m.name}</p>
                     <i class="fa-solid fa-plus text-blue-500"></i>
                 </div>`).join('');
-            
             if(pl) {
                 document.getElementById('pl-id').value = pl.id;
                 document.getElementById('pl-name').value = pl.name;
@@ -308,12 +302,9 @@
 
         function editPlaylist(id) { openPlaylistBuilder(state.playlists.find(p => p.id === id)); }
         function addToDraft(id) { state.draft.push({ id, duration: 10 }); renderDraft(); }
-        
         function renderDraft() {
             const list = document.getElementById('pl-target-list');
             document.getElementById('pl-count').innerText = `${state.draft.length} Items`;
-            if(!state.draft.length) return list.innerHTML = `<p class="text-center text-slate-400 mt-10">Empty Timeline</p>`;
-            
             list.innerHTML = state.draft.map((item, i) => {
                 const m = state.media.find(x => x.id === item.id);
                 if(!m) return '';
@@ -321,161 +312,130 @@
                 <div class="bg-white p-3 rounded border flex items-center gap-3">
                     <span class="text-xs font-bold text-slate-300">${i+1}</span>
                     <img src="${m.url}" class="w-10 h-10 rounded object-cover bg-slate-100">
-                    <div class="flex-1 overflow-hidden"><p class="text-xs font-bold truncate">${m.name}</p></div>
-                    <input type="number" value="${item.duration}" onchange="state.draft[${i}].duration=parseInt(this.value)" class="w-14 p-1 text-xs border rounded text-center">
-                    <span class="text-xs text-slate-400">s</span>
-                    <button onclick="state.draft.splice(${i},1); renderDraft()" class="text-red-400 hover:text-red-600 px-2"><i class="fa-solid fa-trash"></i></button>
+                    <p class="text-xs font-bold truncate flex-1">${m.name}</p>
+                    <input type="number" value="${item.duration}" onchange="state.draft[${i}].duration=parseInt(this.value)" class="w-12 p-1 text-xs border rounded text-center">
+                    <button onclick="state.draft.splice(${i},1); renderDraft()" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
                 </div>`;
             }).join('');
         }
 
         async function savePlaylist() {
-            const btn = document.getElementById('save-pl-btn');
-            btn.innerText = 'Saving...'; btn.disabled = true;
-            
             const name = document.getElementById('pl-name').value;
             const id = document.getElementById('pl-id').value;
-            if(!name) { btn.innerText = 'Save Playlist'; btn.disabled = false; return showToast('Name required', 'error'); }
-
+            if(!name) return showToast('Name required', 'error');
             const payload = { user_id: state.user.id, name, items: state.draft };
-            
-            // ERROR HANDLING FIXED HERE
-            let error;
-            if(id) {
-                const res = await sb.from('playlists').update(payload).eq('id', id);
-                error = res.error;
-            } else {
-                const res = await sb.from('playlists').insert(payload);
-                error = res.error;
-            }
-
-            btn.innerText = 'Save Playlist'; btn.disabled = false;
-
-            if(error) {
-                console.error(error); // Log to console for debugging
-                showToast(`Save Failed: ${error.message}`, 'error');
-            } else {
-                showToast('Playlist Saved Successfully', 'success');
-                closeModal('modal-playlist');
-                loadPlaylists();
-            }
+            const { error } = id ? await sb.from('playlists').update(payload).eq('id', id) : await sb.from('playlists').insert(payload);
+            if(error) showToast(error.message, 'error');
+            else { showToast('Saved', 'success'); closeModal('modal-playlist'); loadPlaylists(); }
         }
 
-        async function editPlaylistName(id, oldName) {
-            const newName = prompt("Enter new name:", oldName);
-            if(newName && newName !== oldName) {
-                const { error } = await sb.from('playlists').update({name: newName}).eq('id', id);
-                if(error) showToast(error.message, 'error'); else { showToast('Renamed', 'success'); loadPlaylists(); }
-            }
+        async function renamePlaylist(id, old) {
+            const name = prompt("New Name:", old);
+            if(name) await sb.from('playlists').update({name}).eq('id', id); loadPlaylists();
         }
-
         async function deletePlaylist(id) {
-            if(confirm("Delete playlist?")) {
-                const { error } = await sb.from('playlists').delete().eq('id', id);
-                if(error) showToast(error.message, 'error'); else { showToast('Deleted', 'success'); loadPlaylists(); }
-            }
+            if(confirm("Delete?")) await sb.from('playlists').delete().eq('id', id); loadPlaylists();
         }
 
-        // --- SCHEDULES (NEW) ---
+        // --- SCHEDULES ---
         async function loadSchedules() {
-            // Fetch schedules with device name and playlist name via Join is hard in plain JS
-            // So we fetch schedules then find matches in state.
             const { data, error } = await sb.from('schedules').select('*');
             if(error) return showToast(error.message, 'error');
             state.schedules = data || [];
             
-            const list = document.getElementById('schedule-list');
-            if(!state.schedules.length) return list.innerHTML = `<p class="text-center text-slate-400 mt-10">No schedules set.</p>`;
-
-            // Ensure we have devices/playlists loaded for names
             if(!state.devices.length) await loadDevices();
             if(!state.playlists.length) await loadPlaylists();
-
-            list.innerHTML = state.schedules.map(s => {
+            
+            document.getElementById('schedule-list').innerHTML = state.schedules.map(s => {
                 const dev = state.devices.find(d => d.id === s.device_id);
                 const pl = state.playlists.find(p => p.id === s.playlist_id);
                 return `
                 <div class="bg-white p-4 rounded-lg border flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="font-bold text-slate-800">${dev ? dev.name : 'Unknown Device'}</span>
+                            <span class="font-bold">${dev ? dev.name : 'Unknown Device'}</span>
                             <i class="fa-solid fa-arrow-right text-slate-300 text-xs"></i>
                             <span class="font-bold text-blue-600">${pl ? pl.name : 'Unknown Playlist'}</span>
                         </div>
-                        <div class="text-xs text-slate-500 font-mono bg-slate-100 inline-block px-2 py-1 rounded">
-                            <i class="fa-regular fa-clock mr-1"></i> ${s.start_time} - ${s.end_time}
+                        <div class="text-xs text-slate-500 bg-slate-100 inline-block px-2 py-1 rounded">
+                            ${s.start_time.slice(0,5)} - ${s.end_time.slice(0,5)}
                         </div>
                     </div>
-                    <button onclick="deleteSchedule(${s.id})" class="text-slate-400 hover:text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
+                    <div class="flex gap-2">
+                        <button onclick="editSchedule(${s.id})" class="text-slate-400 hover:text-blue-500 p-2"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteSchedule(${s.id})" class="text-slate-400 hover:text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
+                    </div>
                 </div>`;
             }).join('');
         }
 
-        function openScheduleModal() {
+        function openScheduleModal(sch = null) {
             document.getElementById('modal-schedule').classList.remove('hidden');
-            // Populate dropdowns
-            document.getElementById('sch-device').innerHTML = state.devices.map(d => `<option value="${d.id}">${d.name} (${d.code})</option>`).join('');
+            document.getElementById('sch-device').innerHTML = state.devices.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
             document.getElementById('sch-playlist').innerHTML = state.playlists.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            
+            if(sch) {
+                document.getElementById('sch-modal-title').innerText = "Edit Schedule";
+                document.getElementById('sch-id').value = sch.id;
+                document.getElementById('sch-device').value = sch.device_id;
+                document.getElementById('sch-playlist').value = sch.playlist_id;
+                document.getElementById('sch-start').value = sch.start_time;
+                document.getElementById('sch-end').value = sch.end_time;
+            } else {
+                document.getElementById('sch-modal-title').innerText = "Add Schedule";
+                document.getElementById('sch-id').value = "";
+                document.getElementById('sch-start').value = "";
+                document.getElementById('sch-end').value = "";
+            }
+        }
+
+        function editSchedule(id) {
+            const sch = state.schedules.find(s => s.id === id);
+            openScheduleModal(sch);
         }
 
         async function saveSchedule() {
+            const id = document.getElementById('sch-id').value;
             const device_id = document.getElementById('sch-device').value;
             const playlist_id = document.getElementById('sch-playlist').value;
             const start_time = document.getElementById('sch-start').value;
             const end_time = document.getElementById('sch-end').value;
-
             if(!start_time || !end_time) return showToast('Times required', 'error');
-
-            const { error } = await sb.from('schedules').insert({
-                user_id: state.user.id,
-                device_id, playlist_id, start_time, end_time
-            });
-
-            if(error) showToast(error.message, 'error'); 
-            else { showToast('Schedule Created', 'success'); closeModal('modal-schedule'); loadSchedules(); }
+            
+            const payload = { user_id: state.user.id, device_id, playlist_id, start_time, end_time };
+            
+            const { error } = id ? await sb.from('schedules').update(payload).eq('id', id) : await sb.from('schedules').insert(payload);
+            
+            if(error) showToast(error.message, 'error'); else { showToast('Saved', 'success'); closeModal('modal-schedule'); loadSchedules(); }
         }
 
         async function deleteSchedule(id) {
-            if(confirm("Delete schedule?")) {
-                const { error } = await sb.from('schedules').delete().eq('id', id);
-                if(error) showToast(error.message, 'error'); else { showToast('Deleted', 'success'); loadSchedules(); }
-            }
+            if(confirm("Delete?")) await sb.from('schedules').delete().eq('id', id); loadSchedules();
         }
-
 
         // --- DEVICES ---
         async function loadDevices() {
-            const { data, error } = await sb.from('devices').select('*').order('id', {ascending: false});
-            if(error) return showToast(error.message, 'error');
+            const { data } = await sb.from('devices').select('*').order('id', {ascending: false});
             state.devices = data || [];
-            
-            // Ensure playlists loaded for dropdown
-            if(state.playlists.length === 0) {
-                 const { data: pl } = await sb.from('playlists').select('*');
-                 state.playlists = pl || [];
-            }
-
+            if(!state.playlists.length) { const { data: pl } = await sb.from('playlists').select('*'); state.playlists = pl || []; }
             document.getElementById('device-list').innerHTML = state.devices.map(d => `
                 <div class="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 font-mono text-xs font-bold border">${d.code}</div>
+                        <div class="w-12 h-12 bg-slate-100 rounded flex items-center justify-center font-mono text-xs font-bold">${d.code}</div>
                         <div>
                             <div class="flex items-center gap-2">
-                                <h4 class="font-bold text-slate-800">${d.name}</h4>
+                                <h4 class="font-bold">${d.name}</h4>
                                 <button onclick="renameDevice(${d.id}, '${d.name}')" class="text-slate-300 hover:text-blue-500 text-xs"><i class="fa-solid fa-pen"></i></button>
                             </div>
-                            <span class="text-xs ${d.status==='online'?'text-green-600':'text-red-500'} font-bold uppercase tracking-wider">${d.status}</span>
+                            <span class="text-xs ${d.status==='online'?'text-green-600':'text-red-500'} font-bold">${d.status}</span>
                         </div>
                     </div>
                     <div class="flex items-center gap-4">
-                        <div class="text-right mr-4">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase">Default Playlist</label>
-                            <select onchange="assignPlaylist(${d.id}, this.value)" class="text-sm border-none bg-transparent font-medium text-blue-600 focus:ring-0 cursor-pointer">
-                                <option value="">None</option>
-                                ${state.playlists.map(p => `<option value="${p.id}" ${d.playlist_id === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <button onclick="deleteDevice(${d.id})" class="text-slate-400 hover:text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
+                        <select onchange="assignPlaylist(${d.id}, this.value)" class="text-sm border-none bg-transparent text-blue-600 font-medium">
+                            <option value="">Default Playlist...</option>
+                            ${state.playlists.map(p => `<option value="${p.id}" ${d.playlist_id === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                        </select>
+                        <button onclick="deleteDevice(${d.id})" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>
             `).join('');
@@ -483,36 +443,17 @@
 
         async function addDevice() {
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-            const { error } = await sb.from('devices').insert({ user_id: state.user.id, code, name: 'New Screen' });
-            if(error) showToast(error.message, 'error'); else { showToast(`Code: ${code}`, 'success'); loadDevices(); }
+            await sb.from('devices').insert({ user_id: state.user.id, code, name: 'New Screen' });
+            loadDevices();
         }
+        async function assignPlaylist(id, pid) { await sb.from('devices').update({ playlist_id: pid || null }).eq('id', id); showToast('Updated', 'success'); }
+        async function renameDevice(id, old) { const name = prompt("Name:", old); if(name) await sb.from('devices').update({name}).eq('id', id); loadDevices(); }
+        async function deleteDevice(id) { if(confirm("Unlink?")) await sb.from('devices').delete().eq('id', id); loadDevices(); }
 
-        async function assignPlaylist(devId, plId) {
-            const { error } = await sb.from('devices').update({ playlist_id: plId || null }).eq('id', devId);
-            if(error) showToast(error.message, 'error'); else showToast('Default Playlist Updated', 'success');
-        }
-
-        async function renameDevice(id, oldName) {
-            const newName = prompt("New Device Name:", oldName);
-            if(newName && newName !== oldName) {
-                const { error } = await sb.from('devices').update({name: newName}).eq('id', id);
-                if(error) showToast(error.message, 'error'); else { showToast('Renamed', 'success'); loadDevices(); }
-            }
-        }
-        
-        async function deleteDevice(id) {
-             if(confirm('Unlink screen?')) {
-                 const { error } = await sb.from('devices').delete().eq('id', id);
-                 if(error) showToast(error.message, 'error'); else { showToast('Unlinked', 'success'); loadDevices(); }
-             }
-        }
-
-        // --- UTILS ---
         function showToast(msg, type = 'info') {
-            const colors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-slate-800' };
             const div = document.createElement('div');
-            div.className = `toast ${colors[type]} text-white px-4 py-3 rounded shadow-lg flex items-center gap-3 text-sm font-medium`;
-            div.innerHTML = `<i class="fa-solid fa-${type==='success'?'check':type==='error'?'triangle-exclamation':'info-circle'}"></i> ${msg}`;
+            div.className = `toast ${type === 'error' ? 'bg-red-600' : 'bg-slate-800'} text-white px-4 py-3 rounded shadow-lg flex items-center gap-3 text-sm`;
+            div.innerHTML = `<span>${msg}</span>`;
             document.getElementById('toast-container').appendChild(div);
             setTimeout(() => div.remove(), 4000);
         }
